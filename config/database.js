@@ -1,6 +1,5 @@
 const mysql = require("mysql2");
-const { config } = require("./eenvironment");
-
+const {config} = require("./environment")
 // establishing database connection
 const db = mysql.createConnection({
   host: process.env.HOST,

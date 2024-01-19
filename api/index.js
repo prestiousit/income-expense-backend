@@ -1,7 +1,8 @@
-const express = require('express');
+const express = require("express");
+const db = require("../config/database");
 
 const apiRouter = express.Router();
 
-// apiRouter.use('');
+apiRouter.use("/userAdmin", require("./routes/userAdmin"));
 
 module.exports = apiRouter;

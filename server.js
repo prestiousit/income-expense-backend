@@ -34,7 +34,7 @@ exports.start_server = async () => {
           logging.error('An error occured while staring node app', error);
           return;
         }
-        logging.info('Server started on ' + process.env.SITE_URL);
+        logging.info('Server started on ' + process.env.PORT || 5000);
       });
     } catch (error) {
       logging.error(`Error Occured! - start_server - ${error}`);
