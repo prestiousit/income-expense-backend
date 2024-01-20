@@ -6,8 +6,6 @@ const UserCreate = async (req, res) => {
 
     if(!name){
       throw new Error("Name is Required");
-    }else if(!mobileno){
-      throw new Error("Mobileno is Required");
     }else if(!status){
       status = "active"
     }
@@ -15,7 +13,7 @@ const UserCreate = async (req, res) => {
     const [user] = await db
       .promise()
       .query(
-        "INSERT INTO user (name,mobileno,status) VALUES (?,?,?)",
+        "INSERT INTO user (name,mobileno,status,createdAt) VALUES (?,?,?,curdate())",
         [name, mobileno,status]
       );
 
@@ -51,7 +49,7 @@ const UserUpdate = async (req, res) => {
     const [updateuser] = await db
       .promise()
       .query(
-        "UPDATE user SET name = ? , mobileno = ?, status = ?  WHERE id = ?",
+        "UPDATE user SET name = ? , mobileno = ?, status = ?, updatedAt=curDate()  WHERE id = ?",
         [name, mobileno, status , userId]
       );
 
@@ -103,7 +101,7 @@ const UserDelete = async (req, res) => {
     const [deleteuser] = await db
       .promise()
       .query(
-        "UPDATE user SET isDeleted = 1 WHERE id = ?",
+        "UPDATE user SET isDeleted = 1, deletedAt=curdate() WHERE id = ?",
         [userId]
       );
 
@@ -120,9 +118,39 @@ const UserDelete = async (req, res) => {
   }
 };
 
+const UserAddByFrontEnd = async (req, res) => {
+  try {
+    const userName = req.body;
+    const [user] = await db.promise().query("SELECT id FROM user WHERE name=?",[userName.name]);
+
+    let userInsert,msg;
+    if (!user || user.length === 0) {
+      [userInsert] = await db
+      .promise()
+      .query(
+        "INSERT INTO user (name,createdAt) VALUES (?,curdate())",
+        [userName.name]
+      );
+      msg = "User Inserted"
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: msg || "userId found",
+      user: userInsert|| user[0].id ,
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "failed",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   UserCreate,
   UserUpdate,
   UserGet,
-  UserDelete
+  UserDelete,
+  UserAddByFrontEnd
 };

@@ -7,7 +7,7 @@ const LabelCreate = async (req, res) => {
     const [label] = await db
       .promise()
       .query(
-        "INSERT INTO label_category (name,description,color) VALUES (?,?,?)",
+        "INSERT INTO label_category (name,description,color,createdAt) VALUES (?,?,?,curdate())",
         [name, description, color]
       );
 
@@ -40,8 +40,6 @@ const LabelUpdate = async (req, res) => {
     description = description ?? label[0].description;
     color = color ?? label[0].color;
 
-    console.log(name, description, color);
-
     const [updatelabel] = await db
       .promise()
       .query(
@@ -64,7 +62,9 @@ const LabelUpdate = async (req, res) => {
 
 const LabelGet = async (req, res) => {
   try {
-    const [label] = await db.promise().query("SELECT * FROM label_category WHERE isDeleted = 0");
+    const [label] = await db
+      .promise()
+      .query("SELECT * FROM label_category WHERE isDeleted = 0");
 
     if (!label || label.length === 0) {
       throw new Error("no found");
@@ -97,7 +97,7 @@ const LabelDelete = async (req, res) => {
     const [deletelabel] = await db
       .promise()
       .query(
-        "UPDATE label_category SET isDeleted = 1 WHERE id = ?",
+        "UPDATE label_category SET isDeleted = 1, deletedAt=curdate() WHERE id = ?",
         [labelId]
       );
 
@@ -114,9 +114,41 @@ const LabelDelete = async (req, res) => {
   }
 };
 
+const LabelAddByFrontEnd = async (req, res) => {
+  try {
+    const labelName = req.body;
+    const [labelId] = await db
+      .promise()
+      .query("SELECT id FROM label_category WHERE name=?", [labelName.name]);
+
+    let labelInsert, msg;
+    if (!labelId || labelId.length === 0) {
+      [labelInsert] = await db
+        .promise()
+        .query(
+          "INSERT INTO label_category (name,createdAt) VALUES (?,curdate())",
+          [labelName.name]
+        );
+      msg = "label Inserted";
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: msg || "labelId found",
+      label: labelInsert || labelId[0].id,
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "failed",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   LabelCreate,
   LabelUpdate,
   LabelGet,
-  LabelDelete
+  LabelDelete,
+  LabelAddByFrontEnd,
 };
