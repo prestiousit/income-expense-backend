@@ -144,18 +144,28 @@ const BankUpdate = async (req, res) => {
 
 const BankGet = async (req, res) => {
   try {
+    const filed =['id','bankName','bankNickName','bankBranch','accountNo','IFSC_code','mobileNo','description']
+    const sql = `SELECT ${filed.toString()} FROM banktable WHERE isDeleted = 0 AND status = 'active'`
+
     const [bank] = await db
       .promise()
-      .query("SELECT * FROM bank WHERE isDeleted = 0 AND status = 'active'");
+      .query(sql);
 
     if (!bank || bank.length === 0) {
       throw new Error("no data found");
     }
 
+    // const Data = 
+    //  await bank.map((value)=>{
+
+    //     return value
+    //   })
+    
+
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      bank: bank,
+      bank,
     });
   } catch (error) {
     res.status(404).json({
