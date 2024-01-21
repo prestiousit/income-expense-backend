@@ -2,6 +2,8 @@ const db = require("../../../config/database");
 
 const BankCreate = async (req, res) => {
   try {
+
+   
     let {
       bankname,
       banknickname,
@@ -16,6 +18,8 @@ const BankCreate = async (req, res) => {
       label,
       color,
     } = req.body;
+
+    // add condtion for require filed
 
     if (!status) {
       status = "active";
@@ -47,7 +51,7 @@ const BankCreate = async (req, res) => {
       (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
        VALUES (${placeholders})`;
 
-    const [bank] = await db.promise().query(sql, values);
+    // const [bank] = await db.promise().query(sql, values);
 
     console.log("Quary=====>",sql);
 
@@ -74,6 +78,8 @@ const BankUpdate = async (req, res) => {
     if (!bank || bank.length === 0) {
       throw new Error("bank not found");
     }
+
+    
     let {
       bankname,
       banknickname,
