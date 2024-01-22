@@ -11,7 +11,7 @@ const BankCreate = async (req, res) => {
       accountno,
       ifsc_code,
       amount,
-      mobileno,
+      mobileNo,
       user,
       description,
       status,
@@ -19,7 +19,13 @@ const BankCreate = async (req, res) => {
       color,
     } = req.body;
 
-    // add condtion for require filed
+    if(!user){
+      throw new Error("User is Required..!")
+    }else if(!banknickname){
+      throw new Error("Bank Nick Name is Required..!")
+    }else if(!amount){
+      throw new Error("Amount is Required..!")
+    }
 
     if (!status) {
       status = "active";
@@ -32,7 +38,7 @@ const BankCreate = async (req, res) => {
       accountno,
       ifsc_code,
       amount,
-      mobileno,
+      mobileNo,
       user,
       description,
       status,
@@ -51,14 +57,14 @@ const BankCreate = async (req, res) => {
       (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
        VALUES (${placeholders})`;
 
-    // const [bank] = await db.promise().query(sql, values);
+    const [bank] = await db.promise().query(sql, values);
 
     console.log("Quary=====>",sql);
 
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
-      // bank: bank,
+      bank: bank,
     });
   } catch (error) {
     res.status(404).json({
@@ -147,16 +153,16 @@ const BankGet = async (req, res) => {
     const filed =['id','bankName','bankNickName','bankBranch','accountNo','IFSC_code','mobileNo','description']
     const sql = `SELECT ${filed.toString()} FROM banktable WHERE isDeleted = 0 AND status = 'active'`
 
-    const [bank] = await db
+    const [data] = await db
       .promise()
       .query(sql);
 
-    if (!bank || bank.length === 0) {
+    if (!data || data.length === 0) {
       throw new Error("no data found");
     }
 
     // const Data = 
-    //  await bank.map((value)=>{
+    //  await data.map((value)=>{
 
     //     return value
     //   })
@@ -165,7 +171,7 @@ const BankGet = async (req, res) => {
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      bank,
+      data,
     });
   } catch (error) {
     res.status(404).json({
