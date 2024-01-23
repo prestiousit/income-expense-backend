@@ -123,7 +123,7 @@ const TransactionGet = async (req, res) => {
   try {
     const [transaction] = await db
       .promise()
-      .query("SELECT id,date,type,amount,description,paidby,bank,paymentStatus,transactionLabel,color FROM transaction WHERE isDeleted = 0");
+      .query("SELECT id,date,type,amount,description,paidBy,bank,paymentStatus,transactionLabel,color FROM transaction WHERE isDeleted = 0");
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
@@ -169,6 +169,7 @@ const TransactionDelete = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   TransactionCreate,

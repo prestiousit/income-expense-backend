@@ -68,16 +68,22 @@ const UserUpdate = async (req, res) => {
 
 const UserGet = async (req, res) => {
   try {
-    const [user] = await db.promise().query("SELECT * FROM user WHERE isDeleted = 0 AND status = 'active'");
+    const [user] = await db.promise().query("SELECT id,name FROM user WHERE isDeleted = 0 AND status = 'active'");
 
     if (!user || user.length === 0) {
       throw new Error("no data found");
     }
 
+    const data= user.map((el)=>{
+      return {
+        value : el.id,
+        label : el.name
+      }
+    })
     res.status(200).json({
       status: "success",
       message: "get all data",
-      user: user,
+      data
     });
   } catch (error) {
     res.status(404).json({
@@ -121,7 +127,7 @@ const UserDelete = async (req, res) => {
 const UserAddByFrontEnd = async (req, res) => {
   try {
     const userName = req.body;
-    const [user] = await db.promise().query("SELECT id FROM user WHERE name=?",[userName.name]);
+    const [user] = await db.promise().query("SELECT id,name FROM user WHERE name=?",[userName.name]);
 
     let userInsert,msg;
     if (!user || user.length === 0) {
@@ -137,7 +143,7 @@ const UserAddByFrontEnd = async (req, res) => {
     res.status(200).json({
       status: "success",
       message: msg || "userId found",
-      user: userInsert|| user[0].id ,
+      user: userInsert|| user[0] ,
     });
   } catch (error) {
     res.status(404).json({
