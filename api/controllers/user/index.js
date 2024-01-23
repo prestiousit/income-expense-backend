@@ -36,6 +36,7 @@ const UserCreate = async (req, res) => {
     });
   }
 };
+
 const UserGet = async (req, res) => {
   try {
     const Query = 'select id,name from user'
@@ -46,7 +47,8 @@ const UserGet = async (req, res) => {
         value : el.id,
         label : el.name
       }
-    })
+    });
+
     res.status(200).json({
       status: "success",
       message: "user find successfully",
