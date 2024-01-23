@@ -23,7 +23,6 @@ const UserCreate = async (req, res) => {
 
     const [data] = await db.promise().query(Query);
 
-    console.log(Query);
     res.status(200).json({
       status: "success",
       message: "user Created successfully",

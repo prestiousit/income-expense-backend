@@ -14,17 +14,7 @@ const TransactionCreate = async (req, res) => {
       color,
     } = req.body;
 
-    console.log(
-      date,
-      type,
-      amount,
-      description,
-      paidby,
-      bank,
-      paymentStatus,
-      transactionLabel,
-      color
-    );
+   
 
     const [transaction] = await db
       .promise()

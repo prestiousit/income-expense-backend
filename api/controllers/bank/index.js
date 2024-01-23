@@ -51,7 +51,6 @@ const BankCreate = async (req, res) => {
 
     const placeholders = values.map((values) => `'${values}'`).join(",");
 
-    console.log(placeholders);
 
     const sql = `INSERT INTO banktable
       (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
@@ -59,7 +58,6 @@ const BankCreate = async (req, res) => {
 
     const [bank] = await db.promise().query(sql, values);
 
-    console.log("Quary=====>",sql);
 
     res.status(201).json({
       status: "sucess",

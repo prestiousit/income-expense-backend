@@ -10,7 +10,6 @@ const AdminUserRegister = async (req, res) => {
       throw new Error("Username or Password is Required");
     } 
     req.body.password = await bcrypt.hash(password, 10);
-    console.log("password======>",req.body.password);
     const [user] = await db
       .promise()
       .query("INSERT INTO adminUser (username,password) VALUES (?,?)", [
