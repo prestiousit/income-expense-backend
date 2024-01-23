@@ -18,7 +18,7 @@ const TransactionCreate = async (req, res) => {
 
     const [transaction] = await db
       .promise()
-      .query(
+      .query( // arpita
         "INSERT INTO transaction (date,type,amount,description,paidby,bank,paymentStatus,transactionLabel,color,createdAt) VALUES (?,?,?,?,?,?,?,?,?,curdate())",
         [
           date,
@@ -51,7 +51,7 @@ const TransactionUpdate = async (req, res) => {
     const transactionId = req.query.id;
     const [transaction] = await db
       .promise()
-      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]);
+      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]); // arpita
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
@@ -80,7 +80,7 @@ const TransactionUpdate = async (req, res) => {
 
     const [updatetransaction] = await db
       .promise()
-      .query(
+      .query(// arpita
         "UPDATE transaction SET date=? ,type=? ,amount=? ,description=? ,paidBy=? ,bank=? ,paymentStatus=? ,transactionLabel=? ,color=? , updatedAt=curdate()  WHERE id = ?",
         [
           date,
@@ -110,7 +110,7 @@ const TransactionUpdate = async (req, res) => {
 };
 
 const TransactionGet = async (req, res) => {
-  try {
+  try { // arpita
     const [transaction] = await db
       .promise()
       .query("SELECT id,date,type,amount,description,paidBy,bank,paymentStatus,transactionLabel,color FROM transaction WHERE isDeleted = 0");
