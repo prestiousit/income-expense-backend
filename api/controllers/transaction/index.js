@@ -72,52 +72,22 @@ const TransactionUpdate = async (req, res) => {
 const TransactionGet = async (req, res) => {
   try {
 
-    const filed = [
-      "id",
-      "date",
-      "type",
-      "amount",
-      "description",
-      "paidBy",
-      "bank",
-      "paymentStatus",
-      "transactionLabel",
-      "color",
-    ];
-    const query = `SELECT ${filed.toString()} FROM transaction WHERE isDeleted = 0`;
+    const query = `SELECT t.id, t.date, t.type, t.amount, t.description, u.name as paidBy, b.bankNickName, t.paymentStatus, l.name as transactionLabel, t.color 
+    FROM transaction t
+    LEFT JOIN user u ON t.paidBy = u.id
+    LEFT JOIN label_category l ON t.transactionLabel = l.id
+    LEFT JOIN bank b ON t.bank = b.id
+    WHERE t.isDeleted = 0`;
     const [transaction] = await db.promise().query(query);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
     }
 
-    const Data = Promise.all(
-      transaction.map(async (value) => {
-        const [uname] = await db
-          .promise()
-          .query(`SELECT name FROM user WHERE id = ${value.paidBy}`);
-
-        const [label] = await db
-          .promise()
-          .query(
-            `select name from label_category where id = ${value.transactionLabel}`
-          );
-
-        const [bank] = await db
-          .promise()
-          .query(`select bankNickName from bank where id = ${value.bank}`);
-
-        const name = uname && uname[0] ? uname[0].name : "";
-        const labelname = label && label[0] ? label[0].name : "";
-        const bankname = bank && bank[0] ? bank[0].bankNickName : "";
-        return { ...value, name, labelname, bankname };
-      })
-    );
-
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      transaction: await Data,
+      transaction: transaction,
     });
   } catch (error) {
     res.status(404).json({
