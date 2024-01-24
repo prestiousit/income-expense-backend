@@ -37,7 +37,7 @@ const TransactionUpdate = async (req, res) => {
     const transactionId = req.query.id;
     const [transaction] = await db
       .promise()
-      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]); // arpita
+      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
@@ -75,12 +75,9 @@ const TransactionUpdate = async (req, res) => {
 
 const TransactionGet = async (req, res) => {
   try {
-    // arpita
-    const [transaction] = await db
-      .promise()
-      .query(
-        "SELECT id,date,type,amount,description,paidBy,bank,paymentStatus,transactionLabel,color FROM transaction WHERE isDeleted = 0"
-      );
+    const field = ['id','date','type','amount','description','paidBy','bank','paymentStatus','transactionLabel','color']
+    const Query = `SELECT ${field.toString()}  FROM transaction WHERE isDeleted = 0`;
+    const [transaction] = await db.promise().query(Query);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
