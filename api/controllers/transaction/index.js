@@ -37,7 +37,7 @@ const TransactionUpdate = async (req, res) => {
     const transactionId = req.query.id;
     const [transaction] = await db
       .promise()
-      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]);
+      .query("SELECT * FROM transaction WHERE id = ?", [transactionId]); // arpita
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
@@ -57,17 +57,13 @@ const TransactionUpdate = async (req, res) => {
       {}
     );
 
-    const [updatedTransaction] = await db
-      .promise()
-      .query("UPDATE transaction SET ? , updatedAt=CURDATE() WHERE id = ?", [
-        updatedFields,
-        transactionId,
-      ]);
+    const Query = `UPDATE transaction SET ${updatedFields} , updatedAt=CURDATE() WHERE id = ${transactionId}`;
+    const [updatedTransaction] = await db.promise().query(Query);
 
     res.status(200).json({
       status: "success",
       message: "transaction updated successfully",
-      transaction: updatetransaction,
+      data: updatedTransaction,
     });
   } catch (error) {
     res.status(404).json({
@@ -79,6 +75,7 @@ const TransactionUpdate = async (req, res) => {
 
 const TransactionGet = async (req, res) => {
   try {
+    // arpita
     const [transaction] = await db
       .promise()
       .query(

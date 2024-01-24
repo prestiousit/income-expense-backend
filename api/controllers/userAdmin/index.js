@@ -48,7 +48,7 @@ const AdminUserLogin = async (req, res) => {
       throw new Error("Incorrect username or 'password'");
     }
 
-    const token = jwt.sign({ id: user[0].id,username : user[0].username }, "SURAT");
+    const token = jwt.sign({ id: user[0].id,username : user[0].username }, process.env.SECRET_KEY);
 
 
     res.status(200).json({
