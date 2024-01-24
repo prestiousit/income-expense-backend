@@ -105,8 +105,6 @@ const TransactionGet = async (req, res) => {
 const TransactionDelete = async (req, res) => {
   try {
     const transactionId = req.params.id;
-    console.log("transationid",transactionId);
-
     const [transaction] = await db
       .promise()
       .query("SELECT * FROM transaction WHERE id = ?", [transactionId]);
@@ -117,7 +115,10 @@ const TransactionDelete = async (req, res) => {
 
     const [deletetransaction] = await db
       .promise()
-      .query("UPDATE transaction SET isDeleted = 1, deletedAt=curdate() WHERE id = ?", [transactionId]);
+      .query(
+        "UPDATE transaction SET isDeleted = 1, deletedAt=curdate() WHERE id = ?",
+        [transactionId]
+      );
 
     res.status(200).json({
       status: "success",
@@ -131,7 +132,6 @@ const TransactionDelete = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   TransactionCreate,
