@@ -22,7 +22,6 @@ const UserCreate = async (req, res) => {
     const Query = `INSERT INTO user (${field}) VALUES (${value})`;
 
     const [data] = await db.promise().query(Query);
-//------------ 
     res.status(200).json({
       status: "success",
       message: "user Created successfully",
