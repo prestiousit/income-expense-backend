@@ -5,6 +5,6 @@ const router  = express();
 router.post('/create',TransactionCreate)
 router.get('/get',TransactionGet)
 router.patch('/update',TransactionUpdate)
-router.delete('/delete',TransactionDelete)
+router.delete('/delete/:id',TransactionDelete)
 
 module.exports = router;
