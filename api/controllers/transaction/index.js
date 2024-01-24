@@ -1,7 +1,7 @@
 const moment = require("moment");
 const db = require("../../../config/database");
 
-const TransactionCreate = async (req, res) => {
+const transactionCreate = async (req, res) => {
   try {
     let { date, type, amount, bank, paymentStatus } = req.body;
     if (!date || !type || !amount || !bank || !paymentStatus) {
@@ -16,8 +16,8 @@ const TransactionCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const Query = `INSERT INTO transaction (${field}) VALUES (${value})`;
-    const [transaction] = await db.promise().query(Query);
+    const query = `INSERT INTO transaction (${field}) VALUES (${value})`;
+    const [transaction] = await db.promise().query(query);
 
     res.status(201).json({
       status: "sucess",
@@ -32,7 +32,7 @@ const TransactionCreate = async (req, res) => {
   }
 };
 
-const TransactionUpdate = async (req, res) => {
+const transactionUpdate = async (req, res) => {
   try {
     const transactionId = req.query.id;
     const [transaction] = await db
@@ -57,8 +57,8 @@ const TransactionUpdate = async (req, res) => {
       {}
     );
 
-    const Query = `UPDATE transaction SET ${updatedFields} , updatedAt=CURDATE() WHERE id = ${transactionId}`;
-    const [updatedTransaction] = await db.promise().query(Query);
+    const query = `UPDATE transaction SET ${updatedFields} , updatedAt=CURDATE() WHERE id = ${transactionId}`;
+    const [updatedTransaction] = await db.promise().query(query);
 
     res.status(200).json({
       status: "success",
@@ -73,11 +73,11 @@ const TransactionUpdate = async (req, res) => {
   }
 };
 
-const TransactionGet = async (req, res) => {
+const transactionGet = async (req, res) => {
   try {
     const field = ['id','date','type','amount','description','paidBy','bank','paymentStatus','transactionLabel','color']
-    const Query = `SELECT ${field.toString()}  FROM transaction WHERE isDeleted = 0`;
-    const [transaction] = await db.promise().query(Query);
+    const query = `SELECT ${field.toString()}  FROM transaction WHERE isDeleted = 0`;
+    const [transaction] = await db.promise().query(query);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
@@ -96,7 +96,7 @@ const TransactionGet = async (req, res) => {
   }
 };
 
-const TransactionDelete = async (req, res) => {
+const transactionDelete = async (req, res) => {
   try {
     const transactionId = req.params.id;
     const [transaction] = await db
@@ -128,8 +128,8 @@ const TransactionDelete = async (req, res) => {
 };
 
 module.exports = {
-  TransactionCreate,
-  TransactionUpdate,
-  TransactionGet,
-  TransactionDelete,
+  transactionCreate,
+  transactionUpdate,
+  transactionGet,
+  transactionDelete,
 };
