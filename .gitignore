@@ -1,8 +1,7 @@
-<<<<<<<<< Temporary merge branch 1
+
 /node_modules
 
 /.env
-=========
 # Logs
 logs
 *.log
@@ -107,4 +106,3 @@ dist
 
 # TernJS port file
 .tern-port
->>>>>>>>> Temporary merge branch 2
