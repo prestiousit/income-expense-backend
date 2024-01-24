@@ -49,11 +49,16 @@ const BankCreate = async (req, res) => {
 
     const placeholders = values.map((values) => `'${values}'`).join(",");
 
-    const sql = `INSERT INTO banktable
+    console.log(placeholders);
+
+    const sql = `INSERT INTO bank
       (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
        VALUES (${placeholders})`;
 
     const [bank] = await db.promise().query(sql, values);
+
+
+    console.log("Quary=====>", sql);
 
     res.status(201).json({
       status: "sucess",
@@ -76,7 +81,34 @@ const BankUpdate = async (req, res) => {
       .map((key) => `${key} = '${req.body[key]}'`)
       .join(", ");
 
-    const Quary = `UPDATE banktable SET ${updateFields} WHERE id = ${bankId}`;
+
+    let {
+      bankname,
+      banknickname,
+      bankbranch,
+      accountno,
+      ifsc_code,
+      amount,
+      mobileno,
+      user,
+      description,
+      status,
+      label,
+      color,
+    } = req.body;
+
+    bankname = bankname ?? bank[0].bankName;
+    banknickname = banknickname ?? bank[0].bankNickName;
+    bankbranch = bankbranch ?? bank[0].bankBranch;
+    accountno = accountno ?? bank[0].accountNo;
+    ifsc_code = ifsc_code ?? usbanker[0].IFSC_code;
+    amount = amount ?? bank[0].amount;
+    mobileno = mobileno ?? bank[0].mobileNo;
+    user = user ?? user[0].user;
+    description = description ?? bank[0].description;
+    status = status ?? bank[0].status;
+    label = label ?? bank[0].bankLabel;
+    color = color ?? bank[0].color;
 
     const [updateuser] = await db
       .promise()
@@ -101,18 +133,15 @@ const BankGet = async (req, res) => {
       "id",
       "bankName",
       "bankNickName",
-      "amount",
+
       "bankBranch",
       "accountNo",
       "IFSC_code",
       "mobileNo",
       "description",
-      "user",
-      "bankLabel",
-      "status",
-      "color",
+
     ];
-    const sql = `SELECT ${filed.toString()} FROM banktable WHERE isDeleted = 0 AND status = 'active'`;
+    const sql = `SELECT ${filed.toString()} FROM bank WHERE isDeleted = 0 AND status = 'active'`;
 
     const [data] = await db.promise().query(sql);
 
@@ -127,6 +156,11 @@ const BankGet = async (req, res) => {
           .query(`SELECT name FROM user WHERE id = ${value.user}`);
 
         const username = userData && userData[0] ? userData[0].name : "";
+    // const Data =
+    //  await data.map((value)=>{
+
+    //     return value
+    //   })
 
         return { ...value, username };
       })
@@ -174,9 +208,45 @@ const BankDelete = async (req, res) => {
   }
 };
 
+const BankGetDropDown = async (req, res) => {
+  try {
+    const filed = [
+      "id",
+      "bankNickName",
+    ];
+    const sql = `SELECT ${filed.toString()} FROM bank WHERE isDeleted = 0 AND status = 'active'`;
+
+    const [data] = await db.promise().query(sql);
+
+    if (!data || data.length === 0) {
+      throw new Error("no data found");
+    }
+
+    const Data = await data.map((value)=>{
+      return{
+        value : value.id,
+        label : value.bankNickName
+      }
+    }) 
+
+    console.log(Data);
+    res.status(200).json({
+      status: "success",
+      message: "get all data of bank",
+      data,
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "failed",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   BankCreate,
   BankUpdate,
   BankGet,
   BankDelete,
+  BankGetDropDown
 };

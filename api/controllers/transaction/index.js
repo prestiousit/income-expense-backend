@@ -3,12 +3,14 @@ const db = require("../../../config/database");
 
 const TransactionCreate = async (req, res) => {
   try {
-    let { date, type, amount, bank, paymentStatus } = req.body;
-    if (!date || !type || !amount || !bank || !paymentStatus) {
-      throw new Error("Fields are required.");
-    }
+    const { paymentStatus } = req.body;
+
+    if (!paymentStatus) req.body.paymentStatus = "active";
+
+    //  req.body.createdBy = "" //pass admin id using auth
     req.body.isDeleted = 0;
     req.body.createdAt = moment().format("YYYY-MM-DD hh:mm:ss");
+
     const field = Object.keys(req.body)
       .map((key) => key)
       .toString();
@@ -16,13 +18,14 @@ const TransactionCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const Query = `INSERT INTO transaction (${field}) VALUES (${value})`;
-    const [transaction] = await db.promise().query(Query);
+    const query = `INSERT INTO transaction (${field}) VALUES (${value})`;
+
+    const [data] = await db.promise().query(sql);
 
     res.status(201).json({
       status: "sucess",
       message: "transaction Inserted successfully",
-      transaction: transaction,
+      data,
     });
   } catch (error) {
     res.status(404).json({
@@ -42,23 +45,16 @@ const TransactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
-    const updatedFields = [
-      "date",
-      "type",
-      "amount",
-      "description",
-      "paidBy",
-      "bank",
-      "paymentStatus",
-      "transactionLabel",
-      "color",
-    ].reduce(
-      (obj, key) => ({ ...obj, [key]: req.body[key] ?? transaction[0][key] }),
-      {}
-    );
 
-    const Query = `UPDATE transaction SET ${updatedFields} , updatedAt=CURDATE() WHERE id = ${transactionId}`;
-    const [updatedTransaction] = await db.promise().query(Query);
+    req.body.updatedAt = moment().format("YYYY-MM-DD hh:mm:ss");
+
+    const updateFields = Object.keys(req.body)
+      .map((key) => `${key} = '${req.body[key]}'`)
+      .join(", ");
+
+    const query = `UPDATE transaction SET ${updateFields} WHERE id = ${transactionId}`;
+
+    const [updatetransaction] = await db.promise().query(query);
 
     res.status(200).json({
       status: "success",
@@ -75,21 +71,53 @@ const TransactionUpdate = async (req, res) => {
 
 const TransactionGet = async (req, res) => {
   try {
-    // arpita
-    const [transaction] = await db
-      .promise()
-      .query(
-        "SELECT id,date,type,amount,description,paidBy,bank,paymentStatus,transactionLabel,color FROM transaction WHERE isDeleted = 0"
-      );
+
+    const filed = [
+      "id",
+      "date",
+      "type",
+      "amount",
+      "description",
+      "paidBy",
+      "bank",
+      "paymentStatus",
+      "transactionLabel",
+      "color",
+    ];
+    const query = `SELECT ${filed.toString()} FROM transaction WHERE isDeleted = 0`;
+    const [transaction] = await db.promise().query(query);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
     }
 
+    const Data = Promise.all(
+      transaction.map(async (value) => {
+        const [uname] = await db
+          .promise()
+          .query(`SELECT name FROM user WHERE id = ${value.paidBy}`);
+
+        const [label] = await db
+          .promise()
+          .query(
+            `select name from label_category where id = ${value.transactionLabel}`
+          );
+
+        const [bank] = await db
+          .promise()
+          .query(`select bankNickName from bank where id = ${value.bank}`);
+
+        const name = uname && uname[0] ? uname[0].name : "";
+        const labelname = label && label[0] ? label[0].name : "";
+        const bankname = bank && bank[0] ? bank[0].bankNickName : "";
+        return { ...value, name, labelname, bankname };
+      })
+    );
+
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      transaction: transaction,
+      transaction: await Data,
     });
   } catch (error) {
     res.status(404).json({

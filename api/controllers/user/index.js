@@ -34,6 +34,7 @@ const UserCreate = async (req, res) => {
     });
   }
 };
+
 const UserGet = async (req, res) => {
   try {
     const Query = "select id,name from user";
@@ -41,10 +42,11 @@ const UserGet = async (req, res) => {
 
     const data = await user.map((el) => {
       return {
-        value: el.id,
-        label: el.name,
-      };
+        value : el.id,
+        label : el.name
+      }
     });
+
     res.status(200).json({
       status: "success",
       message: "user find successfully",
