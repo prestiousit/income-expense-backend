@@ -22,8 +22,6 @@ const UserCreate = async (req, res) => {
     const Query = `INSERT INTO user (${field}) VALUES (${value})`;
 
     const [data] = await db.promise().query(Query);
-
-    console.log(Query);
     res.status(200).json({
       status: "success",
       message: "user Created successfully",
@@ -38,15 +36,15 @@ const UserCreate = async (req, res) => {
 };
 const UserGet = async (req, res) => {
   try {
-    const Query = 'select id,name from user'
+    const Query = "select id,name from user";
     const [user] = await db.promise().query(Query);
 
-    const data = await user.map((el)=>{
+    const data = await user.map((el) => {
       return {
-        value : el.id,
-        label : el.name
-      }
-    })
+        value: el.id,
+        label: el.name,
+      };
+    });
     res.status(200).json({
       status: "success",
       message: "user find successfully",
@@ -60,8 +58,7 @@ const UserGet = async (req, res) => {
   }
 };
 
-
 module.exports = {
   UserCreate,
-  UserGet
+  UserGet,
 };

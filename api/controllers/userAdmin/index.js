@@ -10,7 +10,6 @@ const AdminUserRegister = async (req, res) => {
       throw new Error("Username or Password is Required");
     } 
     req.body.password = await bcrypt.hash(password, 10);
-    console.log("password======>",req.body.password);
     const [user] = await db
       .promise()
       .query("INSERT INTO adminUser (username,password) VALUES (?,?)", [
@@ -49,7 +48,7 @@ const AdminUserLogin = async (req, res) => {
       throw new Error("Incorrect username or 'password'");
     }
 
-    const token = jwt.sign({ id: user[0].id,username : user[0].username }, "SURAT");
+    const token = jwt.sign({ id: user[0].id,username : user[0].username }, process.env.SECRET_KEY);
 
 
     res.status(200).json({
