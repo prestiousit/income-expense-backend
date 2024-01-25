@@ -3,7 +3,7 @@ const db = require("../../../config/database");
 const labelGet = async (req, res) => {
   try {
     const filed = ["id", "name"];
-    const sql = `SELECT ${filed.toString()} FROM label_category WHERE isDeleted = 0`;
+    const sql = `SELECT ${filed.toString()} FROM labelcategory WHERE isDeleted = 0`;
 
     const [label] = await db.promise().query(sql);
 
@@ -39,7 +39,7 @@ const labelCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const sql = `INSERT INTO label_category (${field}) VALUES (${value})`;
+    const sql = `INSERT INTO labelcategory (${field}) VALUES (${value})`;
 
     const [data] = await db.promise().query(sql);
 

@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.post("/login", adminUserLogin);
 
-router.use(adminAuth)
 router.post("/register", adminUserRegister);
+router.use(adminAuth)
 router.delete("/delete", adminUserDelete);
 router.patch("/update", adminUserUpdate);
 
