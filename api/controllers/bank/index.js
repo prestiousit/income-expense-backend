@@ -63,7 +63,7 @@ const bankCreate = async (req, res) => {
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
-      bank: bank,
+      data: bank,
     });
   } catch (error) {
     res.status(404).json({
@@ -105,7 +105,7 @@ const bankUpdate = async (req, res) => {
 const bankGet = async (req, res) => {
   try {
     const sql = `
-      SELECT b.id,bankName,bankNickName,amount,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
+      SELECT b.id,bankName,bankNickName,amount,user as userid ,bankLabel as labelid,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
       FROM ${bankTabel} b
       LEFT JOIN ${userTabel} u ON b.user = u.id
       LEFT JOIN ${labelcategoryTabel} l ON b.bankLabel = l.id
@@ -164,9 +164,6 @@ const bankGetDropDown = async (req, res) => {
 
     const [data] = await db.promise().query(sql);
 
-    if (!data || data.length === 0) {
-      throw new Error("no data found");
-    }
 
     const Data = await data.map((value) => {
       return {

@@ -28,6 +28,7 @@ const transactionCreate = async (req, res) => {
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     const [transaction] = await db.promise().query(query);
 
+
     res.status(201).json({
       status: "sucess",
       message: "transaction Inserted successfully",
@@ -78,7 +79,7 @@ const transactionUpdate = async (req, res) => {
 const transactionGet = async (req, res) => {
   try {
     const [transaction] = await db.promise().query(
-      `SELECT t.id, t.date, t.type, t.amount, t.description, u.name as paidBy, b.bankNickName, t.paymentStatus, l.name as transactionLabel, t.color 
+      `SELECT t.id, t.date, t.type,bank as bankid ,paidBy as userid ,transactionLabel as labelid, t.amount, t.description, u.name as paidBy, b.bankNickName, t.paymentStatus, l.name as transactionLabel, t.color 
         FROM ${transactionTabel} t
         LEFT JOIN ${userTabel} u ON t.paidBy = u.id
         LEFT JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
