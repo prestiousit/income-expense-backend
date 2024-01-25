@@ -91,9 +91,6 @@ const transactionGet = async (req, res) => {
         LEFT JOIN ${bankTabel} b ON t.bank = b.id
         WHERE t.isDeleted = 0`
     );
-    if (!transaction || transaction.length === 0) {
-      throw new Error("no data found");
-    }
 
     res.status(200).json({
       status: "success",

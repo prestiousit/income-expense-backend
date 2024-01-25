@@ -10,9 +10,6 @@ const labelGet = async (req, res) => {
 
     const [label] = await db.promise().query(sql);
 
-    if (!label || label.length === 0) {
-      throw new Error("no data found");
-    }
 
     const data = await label.map((value) => {
       return {
