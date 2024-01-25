@@ -3,6 +3,7 @@ const {
   bankTabel,
   userTabel,
   labelcategoryTabel,
+  transactionTabel
 } = require("../../../database/tabelName");
 const bankCreate = async (req, res) => {
   try {
@@ -47,7 +48,7 @@ const bankCreate = async (req, res) => {
       label,
       color,
       (isDeleted = 0),
-      (createdBy = "1"), // store user id now i set defualt value
+      (createdBy = "1"),
       (createdAt = new Date()),
     ];
 
@@ -59,10 +60,14 @@ const bankCreate = async (req, res) => {
 
     const [bank] = await db.promise().query(sql, values);
 
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount) VALUES (${bank.insertId},${user},${amount})`
+    const [transaction] = await db.promise().query(sql1);
+
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
       bank: bank,
+      transaction: transaction
     });
   } catch (error) {
     res.status(404).json({
