@@ -10,7 +10,7 @@ const { jwtTokenVerify } = require("../../../helper/methods");
 
 const transactionCreate = async (req, res) => {
   try {
-    const tokenData = await jwtTokenVerify(req.headers.token)
+    const tokenData = await jwtTokenVerify(req.headers.token);
     let { date, type, amount, bank, paymentStatus } = req.body;
     if (!date || !type || !amount || !bank || !paymentStatus) {
       throw new Error("Fields are required.");
@@ -44,28 +44,22 @@ const transactionCreate = async (req, res) => {
 const transactionUpdate = async (req, res) => {
   try {
     const transactionId = req.query.id;
+    const tokenData = await jwtTokenVerify(req.headers.token);
+
+    req.body.updatedAt = new Date();
+    req.body.updatedBy = tokenData.id;
+
     const selectQuery = `SELECT * FROM ${transactionTabel} WHERE id = ${transactionId}`;
     const [transaction] = await db.promise().query(selectQuery);
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
-    const updatedFields = [
-      "date",
-      "type",
-      "amount",
-      "description",
-      "paidBy",
-      "bank",
-      "paymentStatus",
-      "transactionLabel",
-      "color",
-    ].reduce(
-      (obj, key) => ({ ...obj, [key]: req.body[key] ?? transaction[0][key] }),
-      {}
-    );
+    const updateFields = Object.keys(req.body)
+      .map((key) => `${key} = '${req.body[key]}'`)
+      .join(", ");
 
-    const query = `UPDATE ${transactionTabel} SET ${updatedFields} , updatedAt=${new Date()} WHERE id = ${transactionId}`;
+    const query = `UPDATE ${transactionTabel} SET ${updateFields}WHERE id = ${transactionId}`;
     const [updatedTransaction] = await db.promise().query(query);
 
     res.status(200).json({
@@ -111,6 +105,7 @@ const transactionGet = async (req, res) => {
 const transactionDelete = async (req, res) => {
   try {
     const transactionId = req.params.id;
+    const tokenData = await jwtTokenVerify(req.headers.token);
     const query = `SELECT * FROM ${transactionTabel} WHERE id = ${transactionId}`;
     const [transaction] = await db.promise().query(query);
 
@@ -118,7 +113,9 @@ const transactionDelete = async (req, res) => {
       throw new Error("transaction not found");
     }
 
-    const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}' WHERE id = ${transactionId}`;
+    const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+      tokenData.id
+    } WHERE id = ${transactionId}`;
     const [deletetransaction] = await db.promise().query(deleteQuery);
 
     res.status(200).json({
