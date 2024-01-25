@@ -149,9 +149,41 @@ const bankDelete = async (req, res) => {
   }
 };
 
+const bankGetDropDown = async (req, res) => {
+  try {
+    const filed = ["id", "bankNickName"];
+    const sql = `SELECT ${filed.toString()} FROM ${bankTabel} WHERE isDeleted = 0 AND status = 'active'`;
+
+    const [data] = await db.promise().query(sql);
+
+    if (!data || data.length === 0) {
+      throw new Error("no data found");
+    }
+
+    const Data = await data.map((value) => {
+      return {
+        value: value.id,
+        label: value.bankNickName,
+      };
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "get all data of bank",
+      data : Data
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "failed",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   bankCreate,
   bankUpdate,
   bankGet,
   bankDelete,
+  bankGetDropDown
 };
