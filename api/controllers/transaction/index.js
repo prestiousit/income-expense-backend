@@ -75,10 +75,16 @@ const transactionUpdate = async (req, res) => {
 
 const transactionGet = async (req, res) => {
   try {
-    const field = ['id','date','type','amount','description','paidBy','bank','paymentStatus','transactionLabel','color']
-    const query = `SELECT ${field.toString()}  FROM transaction WHERE isDeleted = 0`;
-    const [transaction] = await db.promise().query(query);
-
+    const [transaction] = await db
+      .promise()
+      .query(
+        `SELECT t.id, t.date, t.type, t.amount, t.description, u.name as paidBy, b.bankNickName, t.paymentStatus, l.name as transactionLabel, t.color 
+        FROM transaction t
+        LEFT JOIN user u ON t.paidBy = u.id
+        LEFT JOIN label_category l ON t.transactionLabel = l.id
+        LEFT JOIN bank b ON t.bank = b.id
+        WHERE t.isDeleted = 0`
+      );
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");
     }

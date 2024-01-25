@@ -1,6 +1,5 @@
 const moment = require("moment");
 const db = require("../../../config/database");
-const { QueryableBase } = require("mysql2/typings/mysql/lib/protocol/sequences/QueryableBase");
 
 const userCreate = async (req, res) => {
   try {
@@ -38,7 +37,7 @@ const userCreate = async (req, res) => {
 const userGet = async (req, res) => {
   try {
     const query = "select id,name from user";
-    const [user] = await db.promise().query(QueryableBaseuery);
+    const [user] = await db.promise().query(query);
 
     const data = await user.map((el) => {
       return {

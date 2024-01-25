@@ -78,9 +78,7 @@ const bankUpdate = async (req, res) => {
 
     const Quary = `UPDATE banktable SET ${updateFields} WHERE id = ${bankId}`;
 
-    const [updateuser] = await db
-      .promise()
-      .query(Quary);
+    const [updateuser] = await db.promise().query(Quary);
 
     res.status(200).json({
       status: "success",
@@ -97,40 +95,14 @@ const bankUpdate = async (req, res) => {
 
 const bankGet = async (req, res) => {
   try {
-    const filed = [
-      "id",
-      "bankName",
-      "bankNickName",
-      "amount",
-      "bankBranch",
-      "accountNo",
-      "IFSC_code",
-      "mobileNo",
-      "description",
-      "user",
-      "bankLabel",
-      "status",
-      "color",
-    ];
-    const sql = `SELECT ${filed.toString()} FROM banktable WHERE isDeleted = 0 AND status = 'active'`;
+    const sql = `
+      SELECT b.id,bankName,bankNickName,amount,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
+      FROM bank b
+      LEFT JOIN user u ON b.user = u.id
+      LEFT JOIN label_category l ON b.bankLabel = l.id
+      WHERE b.isDeleted = 0`;
 
-    const [data] = await db.promise().query(sql);
-
-    if (!data || data.length === 0) {
-      throw new Error("no data found");
-    }
-
-    const Data = await Promise.all(
-      data.map(async (value) => {
-        const [userData] = await db
-          .promise()
-          .query(`SELECT name FROM user WHERE id = ${value.user}`);
-
-        const username = userData && userData[0] ? userData[0].name : "";
-
-        return { ...value, username };
-      })
-    );
+    const [Data] = await db.promise().query(sql);
 
     console.log(Data);
     res.status(200).json({
