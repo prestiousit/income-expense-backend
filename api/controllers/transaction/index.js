@@ -20,7 +20,7 @@ const TransactionCreate = async (req, res) => {
 
     const query = `INSERT INTO transaction (${field}) VALUES (${value})`;
 
-    const [data] = await db.promise().query(sql);
+    const [data] = await db.promise().query(query);
 
     res.status(201).json({
       status: "sucess",
@@ -79,6 +79,7 @@ const TransactionGet = async (req, res) => {
     LEFT JOIN bank b ON t.bank = b.id
     WHERE t.isDeleted = 0`;
     const [transaction] = await db.promise().query(query);
+
 
     if (!transaction || transaction.length === 0) {
       throw new Error("no data found");

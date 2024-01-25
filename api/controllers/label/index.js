@@ -1,6 +1,7 @@
 const db = require("../../../config/database");
 
-const LabelGet = async (req, res) => {
+
+const labelGet = async (req, res) => {
   try {
     const filed = ["id", "name"];
     const sql = `SELECT ${filed.toString()} FROM label_category WHERE isDeleted = 0`;
@@ -29,8 +30,7 @@ const LabelGet = async (req, res) => {
     });
   }
 };
-
-const LabelCreate = async (req, res) => {
+const labelCreate = async (req, res) => {
   try {
     const field = Object.keys(req.body)
       .map((key) => key)
@@ -57,6 +57,7 @@ const LabelCreate = async (req, res) => {
 };
 
 module.exports = {
-  LabelGet,
-  LabelCreate
+
+  labelGet,
+  labelCreate
 };
