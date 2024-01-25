@@ -4,6 +4,7 @@ const {
   userTabel,
   labelcategoryTabel,
 } = require("../../../database/tabelName");
+const { jwtTokenVerify } = require("../../../helper/methods");
 const bankCreate = async (req, res) => {
   try {
     let {
@@ -78,6 +79,10 @@ const bankCreate = async (req, res) => {
 const bankUpdate = async (req, res) => {
   try {
     const bankId = req.query.id;
+    const tokenData = await jwtTokenVerify(req.headers.token);
+
+    req.body.updatedAt = new Date();
+    req.body.updatedBy = tokenData.id;
 
     const updateFields = Object.keys(req.body)
       .map((key) => `${key} = '${req.body[key]}'`)
@@ -127,6 +132,7 @@ const bankGet = async (req, res) => {
 
 const bankDelete = async (req, res) => {
   try {
+    const tokenData = await jwtTokenVerify(req.headers.token);
     const bankId = req.query.id;
     const query = `SELECT * FROM ${bankTabel} WHERE id = ${bankId}`;
 
@@ -136,7 +142,9 @@ const bankDelete = async (req, res) => {
       throw new Error("bank not found");
     }
 
-    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${new Date()}'WHERE id = ${bankId}`;
+    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${new Date()}', deletedBy = ${
+      tokenData.id
+    } WHERE id = ${bankId}`;
     const [deletebank] = await db.promise().query(deleteQuery);
 
     res.status(200).json({
@@ -175,7 +183,7 @@ const bankGetDropDown = async (req, res) => {
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data : Data
+      data: Data,
     });
   } catch (error) {
     res.status(404).json({
@@ -190,5 +198,5 @@ module.exports = {
   bankUpdate,
   bankGet,
   bankDelete,
-  bankGetDropDown
+  bankGetDropDown,
 };
