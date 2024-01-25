@@ -1,7 +1,7 @@
 const moment = require("moment");
 const db = require("../../../config/database");
 
-const UserCreate = async (req, res) => {
+const userCreate = async (req, res) => {
   try {
     const { name, description, mobileNo, status } = req.body;
 
@@ -19,9 +19,9 @@ const UserCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const Query = `INSERT INTO user (${field}) VALUES (${value})`;
+    const query = `INSERT INTO user (${field}) VALUES (${value})`;
 
-    const [data] = await db.promise().query(Query);
+    const [data] = await db.promise().query(query);
     res.status(200).json({
       status: "success",
       message: "user Created successfully",
@@ -34,11 +34,10 @@ const UserCreate = async (req, res) => {
     });
   }
 };
-
-const UserGet = async (req, res) => {
+const userGet = async (req, res) => {
   try {
-    const Query = "select id,name from user";
-    const [user] = await db.promise().query(Query);
+    const query = "select id,name from user";
+    const [user] = await db.promise().query(query);
 
     const data = await user.map((el) => {
       return {
@@ -61,6 +60,8 @@ const UserGet = async (req, res) => {
 };
 
 module.exports = {
-  UserCreate,
-  UserGet,
+  userCreate,
+  userGet,
+
 };
+

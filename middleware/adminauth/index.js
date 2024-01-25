@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const db = require("../../config/database");
 
-async function AdminAuth(req, res, next) {
+async function adminAuth(req, res, next) {
   try {
     const token = req.headers.token;
     if (!token) throw new Error("send token first..!");
@@ -25,5 +25,5 @@ async function AdminAuth(req, res, next) {
 }
 
 module.exports = {
-  AdminAuth,
+  adminAuth,
 };

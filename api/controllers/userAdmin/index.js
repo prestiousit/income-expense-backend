@@ -2,7 +2,7 @@ const db = require("../../../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const AdminUserRegister = async (req, res) => {
+const adminUserRegister = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -28,7 +28,7 @@ const AdminUserRegister = async (req, res) => {
   }
 };
 
-const AdminUserLogin = async (req, res) => {
+const adminUserLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -65,7 +65,7 @@ const AdminUserLogin = async (req, res) => {
   }
 };
 
-const AdminUserDelete = async (req, res) => {
+const adminUserDelete = async (req, res) => {
   try {
     const userId = req.query.id;
 
@@ -94,7 +94,7 @@ const AdminUserDelete = async (req, res) => {
   }
 };
 
-const AdminUserUpdate = async (req, res) => {
+const adminUserUpdate = async (req, res) => {
   try {
     const userId = req.query.id;
     const [user] = await db
@@ -130,8 +130,8 @@ const AdminUserUpdate = async (req, res) => {
 };
 
 module.exports = {
-  AdminUserRegister,
-  AdminUserLogin,
-  AdminUserDelete,
-  AdminUserUpdate
+  adminUserRegister,
+  adminUserLogin,
+  adminUserDelete,
+  adminUserUpdate
 };

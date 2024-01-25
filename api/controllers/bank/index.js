@@ -1,6 +1,6 @@
 const db = require("../../../config/database");
 
-const BankCreate = async (req, res) => {
+const bankCreate = async (req, res) => {
   try {
     let {
       bankname,
@@ -72,7 +72,7 @@ const BankCreate = async (req, res) => {
   }
 };
 
-const BankUpdate = async (req, res) => {
+const bankUpdate = async (req, res) => {
   try {
     const bankId = req.query.id;
 
@@ -97,7 +97,7 @@ const BankUpdate = async (req, res) => {
   }
 };
 
-const BankGet = async (req, res) => {
+const bankGet = async (req, res) => {
   try {
     const sql = `
       SELECT b.id,bankName,bankNickName,amount,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
@@ -122,7 +122,7 @@ const BankGet = async (req, res) => {
   }
 };
 
-const BankDelete = async (req, res) => {
+const bankDelete = async (req, res) => {
   try {
     const bankId = req.query.id;
     const [bank] = await db
@@ -150,7 +150,7 @@ const BankDelete = async (req, res) => {
   }
 };
 
-const BankGetDropDown = async (req, res) => {
+const bankGetDropDown = async (req, res) => {
   try {
     const filed = ["id", "bankNickName"];
     const sql = `SELECT ${filed.toString()} FROM bank WHERE isDeleted = 0 AND status = 'active'`;
@@ -183,9 +183,9 @@ const BankGetDropDown = async (req, res) => {
 };
 
 module.exports = {
-  BankCreate,
-  BankUpdate,
-  BankGet,
-  BankDelete,
-  BankGetDropDown,
+  bankCreate,
+  bankUpdate,
+  bankGet,
+  bankDelete,
+  bankGetDropDown
 };
