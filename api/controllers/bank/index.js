@@ -3,6 +3,7 @@ const {
   bankTabel,
   userTabel,
   labelcategoryTabel,
+  transactionTabel
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
 const bankCreate = async (req, res) => {
@@ -18,7 +19,7 @@ const bankCreate = async (req, res) => {
       user,
       description,
       status,
-      label,
+      bankLabel,
       color,
     } = req.body;
 
@@ -45,10 +46,10 @@ const bankCreate = async (req, res) => {
       user,
       description,
       status,
-      label,
+      bankLabel,
       color,
       (isDeleted = 0),
-      (createdBy = "1"), // store user id now i set defualt value
+      (createdBy = "1"),
       (createdAt = new Date()),
     ];
 
@@ -60,10 +61,15 @@ const bankCreate = async (req, res) => {
 
     const [bank] = await db.promise().query(sql, values);
 
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`
+    const [transaction] = await db.promise().query(sql1);
+    console.log("sqlll===>",sql1);
+
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
       data: bank,
+      transaction: transaction
     });
   } catch (error) {
     res.status(404).json({

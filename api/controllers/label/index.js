@@ -5,13 +5,11 @@ const { jwtTokenVerify } = require("../../../helper/methods");
 const labelGet = async (req, res) => {
   try {
     const filed = ["id", "name"];
+
     const sql = `SELECT ${filed.toString()} FROM ${labelcategoryTabel} WHERE isDeleted = 0`;
 
     const [label] = await db.promise().query(sql);
 
-    if (!label || label.length === 0) {
-      throw new Error("no data found");
-    }
 
     const data = await label.map((value) => {
       return {
@@ -34,11 +32,10 @@ const labelGet = async (req, res) => {
 
 const labelCreate = async (req, res) => {
   try {
+    const tokenData = await jwtTokenVerify(req.headers.token);
 
-    const tokenData = await jwtTokenVerify(req.headers.token)
-
-    if(!req.body.color){
-      req.body.color = "#ffffff"
+    if (!req.body.color) {
+      req.body.color = "#ffffff";
     }
 
     req.body.createdBy = tokenData.id;
@@ -69,5 +66,5 @@ const labelCreate = async (req, res) => {
 
 module.exports = {
   labelGet,
-  labelCreate
+  labelCreate,
 };
