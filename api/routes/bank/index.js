@@ -1,12 +1,12 @@
 const express = require("express");
-const {BankCreate, BankUpdate, BankDelete, BankGet } = require("../../controllers/bank");
-const { AdminAuth } = require("../../../middleware/adminauth");
+const {bankCreate, bankUpdate, bankDelete, bankGet } = require("../../controllers/bank");
+const { adminAuth } = require("../../../middleware/adminauth");
 const router  = express();
 
-router.use(AdminAuth)
-router.post('/create',BankCreate);
-router.get('/get',BankGet)
-router.patch('/update',BankUpdate)
-router.delete('/delete',BankDelete)
+router.use(adminAuth)
+router.post('/create',bankCreate);
+router.get('/get',bankGet)
+router.patch('/update',bankUpdate)
+router.delete('/delete',bankDelete)
 
 module.exports = router;
