@@ -136,7 +136,7 @@ const bankDelete = async (req, res) => {
       throw new Error("bank not found");
     }
 
-    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1 WHERE id = ${bankId}`;
+    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${new Date()}'WHERE id = ${bankId}`;
     const [deletebank] = await db.promise().query(deleteQuery);
 
     res.status(200).json({

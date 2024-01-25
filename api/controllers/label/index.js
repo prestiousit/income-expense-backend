@@ -42,7 +42,7 @@ const labelCreate = async (req, res) => {
     }
 
     req.body.createdBy = tokenData.id;
-    req.body.createdAt = new Date();
+    req.body.createdAt = `${new Date()}`;
     const field = Object.keys(req.body)
       .map((key) => key)
       .toString();
