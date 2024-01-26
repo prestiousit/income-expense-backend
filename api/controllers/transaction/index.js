@@ -84,16 +84,14 @@ const transactionUpdate = async (req, res) => {
 const transactionGet = async (req, res) => {
   try {
     const [transaction] = await db.promise().query(
-      `SELECT t.id, t.date, t.type, t.amount, t.description, u.name as paidBy, b.bankNickName, t.paymentStatus, l.name as transactionLabel, t.color 
-        FROM ${transactionTabel} t
-        LEFT JOIN ${userTabel} u ON t.paidBy = u.id
-        LEFT JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
-        LEFT JOIN ${bankTabel} b ON t.bank = b.id
-        WHERE t.isDeleted = 0`
+      `SELECT t.id,t.date,t.type,t.amount,t.description,u.name,b.bankNickName,t.paymentStatus,l.name,t.color,credit.credit as credit,debit.debit as debit
+      FROM ${transactionTabel} t
+      LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
+      LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
+      LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
+      LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
+      LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`
     );
-    if (!transaction || transaction.length === 0) {
-      throw new Error("no data found");
-    }
 
     res.status(200).json({
       status: "success",
