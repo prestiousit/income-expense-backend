@@ -29,6 +29,7 @@ const transactionCreate = async (req, res) => {
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     const [transaction] = await db.promise().query(query);
 
+
     const query_bank = `
     SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
     FROM transaction t
@@ -109,14 +110,25 @@ const transactionGet = async (req, res) => {
     LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`
 
+
     const [transaction] = await db.promise().query(
       sql
     );
 
+
+
+
+    let total = 0;
+    const data = transaction.map((el)=>{
+      const credit = el.credit;
+      const debit = el.debit;
+       total = (credit-debit) + total;
+      return({...el,total})
+    })
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      transaction: transaction,
+      transaction: data,
     });
   } catch (error) {
     res.status(404).json({
