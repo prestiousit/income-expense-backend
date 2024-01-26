@@ -3,26 +3,20 @@ const {
   bankTabel,
   userTabel,
   labelcategoryTabel,
-  transactionTabel
+  transactionTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
 const bankCreate = async (req, res) => {
   try {
     let {
-      bankname,
       banknickname,
-      bankbranch,
-      accountno,
-      ifsc_code,
       amount,
-      mobileNo,
       user,
-      description,
       status,
       bankLabel,
-      color,
     } = req.body;
 
+    console.log("value====>", req.body);
     if (!user) {
       throw new Error("User is Required..!");
     } else if (!banknickname) {
@@ -35,41 +29,37 @@ const bankCreate = async (req, res) => {
       status = "active";
     }
 
-    let values = [
-      bankname,
-      banknickname,
-      bankbranch,
-      accountno,
-      ifsc_code,
-      amount,
-      mobileNo,
-      user,
-      description,
-      status,
-      bankLabel,
-      color,
-      (isDeleted = 0),
-      (createdBy = "1"),
-      (createdAt = new Date()),
-    ];
+    req.body.isDeleted = 0;
+    req.body.createdBy = "1";
+    req.body.createdAt = new Date();
 
-    const placeholders = values.map((values) => `'${values}'`).join(",");
+    const keys = Object.keys(req.body)
+      .map((key) => `${key}`)
+      .join(", ");
+
+    const keyvalues = Object.keys(req.body)
+      .map((key) => `'${req.body[key]}'`)
+      .join(", ");
 
     const sql = `INSERT INTO ${bankTabel}
-      (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
-       VALUES (${placeholders})`;
+      (${keys})
+       VALUES (${keyvalues})`;
 
-    const [bank] = await db.promise().query(sql, values);
+    console.log("query===>", sql);
+    const [bank] = await db.promise().query(sql);
+    if (!bankLabel) {
+      bankLabel = "null";
+    }
 
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`;
+    console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
-    console.log("sqlll===>",sql1);
 
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
       data: bank,
-      transaction: transaction
+      // transaction: transaction,
     });
   } catch (error) {
     res.status(404).json({
@@ -169,7 +159,6 @@ const bankGetDropDown = async (req, res) => {
     const sql = `SELECT ${filed.toString()} FROM ${bankTabel} WHERE isDeleted = 0 AND status = 'active'`;
 
     const [data] = await db.promise().query(sql);
-
 
     const Data = await data.map((value) => {
       return {
