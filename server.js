@@ -24,7 +24,6 @@ exports.start_server = async () => {
     app.use(express.urlencoded({ limit: MaxFileSizeMB, extended: true }));
     app.use(express.static(path.join(__dirname, "public")));
     app.use(cors());
-
     app.use("/api", apiRoutes);
     app.get("/health", function (req, res) {
       return res.send("Ok, Working fine.");

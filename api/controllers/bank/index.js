@@ -63,7 +63,6 @@ const bankCreate = async (req, res) => {
 
     const [bank] = await db.promise().query(sql, values);
 
-
     const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`
     const [transaction] = await db.promise().query(sql1);
     console.log("sqlll===>",sql1);
@@ -167,10 +166,10 @@ const bankDelete = async (req, res) => {
   }
 };
 
-
 const bankGetDropDown = async (req, res) => {
   try {
     const filed = ["id", "bankNickName"];
+
     const sql = `SELECT ${filed.toString()} FROM ${bankTabel} WHERE isDeleted = 0 AND status = 'active'`;
 
     const [data] = await db.promise().query(sql);
@@ -182,6 +181,7 @@ const bankGetDropDown = async (req, res) => {
         label: value.bankNickName,
       };
     });
+
 
     res.status(200).json({
       status: "success",
@@ -197,7 +197,6 @@ const bankGetDropDown = async (req, res) => {
 };
 
 module.exports = {
-
   bankCreate,
   bankUpdate,
   bankGet,

@@ -1,7 +1,7 @@
 const db = require("../../../config/database");
-
 const { labelcategoryTabel } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
+
 
 const labelGet = async (req, res) => {
   try {
@@ -31,7 +31,6 @@ const labelGet = async (req, res) => {
   }
 };
 
-
 const labelCreate = async (req, res) => {
   try {
     const tokenData = await jwtTokenVerify(req.headers.token);
@@ -48,7 +47,6 @@ const labelCreate = async (req, res) => {
     const value = Object.keys(req.body)
       .map((key) => `'${req.body[key]}'`)
       .toString();
-
 
     const sql = `INSERT INTO ${labelcategoryTabel} (${field}) VALUES (${value})`;
 

@@ -1,6 +1,5 @@
 const express = require("express");
 const {
-
   labelGet, labelCreate
 } = require("../../controllers/label");
 const router = express();

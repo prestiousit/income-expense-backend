@@ -25,6 +25,7 @@ const transactionCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
+
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     const [transaction] = await db.promise().query(query);
 
@@ -37,7 +38,7 @@ const transactionCreate = async (req, res) => {
     const [bankdata] = await db.promise().query(query_bank);
 
     let bankamount;
-    if(bankamount){
+    if(bankdata.length > 0){
       if(bankdata[0].credit){
         const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount + ${bankdata[0].credit} WHERE id=${bank}`;
         [bankamount] = await db.promise().query(query_bank_amount);
@@ -46,6 +47,7 @@ const transactionCreate = async (req, res) => {
         [bankamount] = await db.promise().query(query_bank_amount);
       }
     }
+
     res.status(201).json({
       status: "sucess",
       message: "transaction Inserted successfully",
@@ -75,8 +77,7 @@ const transactionUpdate = async (req, res) => {
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
-    }
-
+    }     
     const updateFields = Object.keys(req.body)
       .map((key) => `${key} = '${req.body[key]}'`)
       .join(", ");
@@ -107,10 +108,10 @@ const transactionGet = async (req, res) => {
     LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
     LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`
+
     const [transaction] = await db.promise().query(
       sql
     );
-
 
     res.status(200).json({
       status: "success",
@@ -156,7 +157,6 @@ const transactionDelete = async (req, res) => {
 };
 
 module.exports = {
-
   transactionCreate,
   transactionUpdate,
   transactionGet,
