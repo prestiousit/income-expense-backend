@@ -39,6 +39,7 @@ const userCreate = async (req, res) => {
     });
   }
 };
+
 const userGet = async (req, res) => {
   try {
     const query = `select id,name from ${userTabel}`;
@@ -46,6 +47,7 @@ const userGet = async (req, res) => {
 
     const data = await user.map((el) => {
       return {
+
         value: el.id,
         label: el.name,
       };

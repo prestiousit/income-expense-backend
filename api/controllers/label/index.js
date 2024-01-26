@@ -2,6 +2,7 @@ const db = require("../../../config/database");
 const { labelcategoryTabel } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
 
+
 const labelGet = async (req, res) => {
   try {
     const filed = ["id", "name"];

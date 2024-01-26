@@ -15,9 +15,10 @@ const transactionCreate = async (req, res) => {
     // if (!date || !type || !amount || !bank || !paymentStatus) {
     //   throw new Error("Fields are required.");
     // }
+
     req.body.isDeleted = 0;
     req.body.createdBy = tokenData.id;
-    req.body.createdAt = new Date();
+    req.body.createdAt = moment();
     const field = Object.keys(req.body)
       .map((key) => key)
       .toString();
@@ -26,13 +27,47 @@ const transactionCreate = async (req, res) => {
       .toString();
 
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
+    console.log("query=============>", query);
     const [transaction] = await db.promise().query(query);
 
+    const query_bank = `
+    SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
+    FROM transaction t
+    LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transaction.insertId} AND paymentStatus = 'Paid'`;
+
+    const [bankdata] = await db.promise().query(query_bank);
+
+    // console.log("value====>",bankdata);
+
+    const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bankdata[0].bank}`;
+
+    const [data] = await db.promise().query(selectQuery);
+    console.log("data====>", data);
+
+    const dataDate = moment(data[0].createdAt).format("DD-MM-YYYY hh-mm");
+    const submitData = moment(req.body.createdAt).format("DD-MM-YYYY hh-mm");
+
+    let bankamount;
+    if (dataDate !== submitData) {
+      if (bankdata.length > 0) {
+        if (bankdata[0].credit) {
+          const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount + ${bankdata[0].credit} WHERE id=${req.body.bank}`;
+          [bankamount] = await db.promise().query(query_bank_amount);
+        } else if (bankdata[0].debit) {
+          const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${bankdata[0].debit} WHERE id=${req.body.bank}`;
+          [bankamount] = await db.promise().query(query_bank_amount);
+        }
+      }
+    }
 
     res.status(201).json({
       status: "sucess",
       message: "transaction Inserted successfully",
+
       data: transaction,
+      bank: bankdata,
+      // bankamount:bankamount
     });
   } catch (error) {
     res.status(404).json({
@@ -63,6 +98,46 @@ const transactionUpdate = async (req, res) => {
     const query = `UPDATE ${transactionTabel} SET ${updateFields}WHERE id = ${transactionId}`;
     const [updatedTransaction] = await db.promise().query(query);
 
+    const query_bank = `
+    SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
+    FROM transaction t
+    LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transactionId} AND paymentStatus = 'Paid'`;
+
+    console.log("query_bank=====>", query_bank);
+    const [bankdata] = await db.promise().query(query_bank);
+
+    
+    
+    
+    
+    let bankamount;
+    if (bankdata.length > 0) {
+      if (bankdata[0].credit) {
+        const transctionAmount = transaction[0].amount
+
+        let amount;
+        if(transctionAmount > bankdata[0].credit){
+           amount = `amount = amount + ${bankdata[0].credit}`
+        }else if(transctionAmount > bankdata[0].credit){
+          amount = `amount = amount - ${bankdata[0].credit}`
+        }
+        
+        const query_bank_amount = `UPDATE ${bankTabel} SET ${amount}  WHERE id=${req.body.bank}`;
+        [bankamount] = await db.promise().query(query_bank_amount);
+      } else if (bankdata[0].debit) {
+
+        const transctionAmount = transaction[0].amount
+        if(transctionAmount > bankdata[0].debit){
+          amount = `amount = amount + ${bankdata[0].debit}`
+       }else if(transctionAmount > bankdata[0].debit){
+         amount = `amount = amount - ${bankdata[0].debit}`
+       }
+        const query_bank_amount = `UPDATE ${bankTabel} SET ${amount} WHERE id=${req.body.bank}`;
+        [bankamount] = await db.promise().query(query_bank_amount);
+      }
+    }
+
     res.status(200).json({
       status: "success",
       message: "transaction updated successfully",
@@ -78,20 +153,32 @@ const transactionUpdate = async (req, res) => {
 
 const transactionGet = async (req, res) => {
   try {
-    const [transaction] = await db.promise().query(
-      `SELECT t.id,t.date,t.type,t.amount,t.description,u.name,b.bankNickName,t.paymentStatus,l.name as label,t.color,credit.credit as credit,debit.debit as debit
-      FROM ${transactionTabel} t
-      LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
-      LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
-      LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
-      LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
-      LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`
-    );
+    const sql = `SELECT t.id,t.date,t.bank as bankid,t.type,t.amount,t.description,u.name,t.paidBy as userid,b.bankNickName,t.paymentStatus,t.transactionLabel as labelid,l.name as label,t.color,credit.credit as credit,debit.debit as debit
+    FROM ${transactionTabel} t
+    LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
+    LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
+    LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
+    LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`;
 
+    const [transaction] = await db.promise().query(sql);
+
+    let total = 0;
+    const data = transaction.map((el) => {
+      if (!el.credit) {
+        el.credit = 0;
+      } else if (!el.debit) {
+        el.debit = 0;
+      }
+      const credit = el.credit;
+      const debit = el.debit;
+      total = credit - debit + total;
+      return { ...el, total };
+    });
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      transaction: transaction,
+      transaction: data,
     });
   } catch (error) {
     res.status(404).json({

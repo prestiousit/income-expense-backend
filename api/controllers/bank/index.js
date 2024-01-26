@@ -14,9 +14,16 @@ const bankCreate = async (req, res) => {
       user,
       status,
       bankLabel,
+      bankbranch,
+      accountno,
+      ifsc_code,
+      label,
+      color,
+      description,
+      mobileNo,
     } = req.body;
 
-    console.log("value====>", req.body);
+    console.log("value=====================>", req.body);
     if (!user) {
       throw new Error("User is Required..!");
     } else if (!banknickname) {
@@ -26,9 +33,10 @@ const bankCreate = async (req, res) => {
     }
 
     if (!status) {
-      status = "active";
+      req.body.status  = "active";
     }
 
+    req.body.status = "active";
     req.body.isDeleted = 0;
     req.body.createdBy = "1";
     req.body.createdAt = new Date();
@@ -50,10 +58,13 @@ const bankCreate = async (req, res) => {
     if (!bankLabel) {
       bankLabel = "null";
     }
-
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`;
-    console.log("sqlll===>", sql1);
-    const [transaction] = await db.promise().query(sql1);
+    if (accountno && ifsc_code) {
+      const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${
+        bank.insertId
+      },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
+      console.log("sqlll===>", sql1);
+      const [transaction] = await db.promise().query(sql1);
+    }
 
     res.status(201).json({
       status: "sucess",
@@ -156,6 +167,7 @@ const bankDelete = async (req, res) => {
 const bankGetDropDown = async (req, res) => {
   try {
     const filed = ["id", "bankNickName"];
+
     const sql = `SELECT ${filed.toString()} FROM ${bankTabel} WHERE isDeleted = 0 AND status = 'active'`;
 
     const [data] = await db.promise().query(sql);
