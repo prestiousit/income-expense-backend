@@ -1,15 +1,16 @@
 const db = require("../../../config/database");
 
-const LabelGet = async (req, res) => {
+const { labelcategoryTabel } = require("../../../database/tabelName");
+const { jwtTokenVerify } = require("../../../helper/methods");
+
+const labelGet = async (req, res) => {
   try {
     const filed = ["id", "name"];
-    const sql = `SELECT ${filed.toString()} FROM label_category WHERE isDeleted = 0`;
+
+    const sql = `SELECT ${filed.toString()} FROM ${labelcategoryTabel} WHERE isDeleted = 0`;
 
     const [label] = await db.promise().query(sql);
 
-    if (!label || label.length === 0) {
-      throw new Error("no data found");
-    }
 
     const data = await label.map((value) => {
       return {
@@ -30,8 +31,17 @@ const LabelGet = async (req, res) => {
   }
 };
 
-const LabelCreate = async (req, res) => {
+
+const labelCreate = async (req, res) => {
   try {
+    const tokenData = await jwtTokenVerify(req.headers.token);
+
+    if (!req.body.color) {
+      req.body.color = "#ffffff";
+    }
+
+    req.body.createdBy = tokenData.id;
+    req.body.createdAt = `${new Date()}`;
     const field = Object.keys(req.body)
       .map((key) => key)
       .toString();
@@ -39,7 +49,8 @@ const LabelCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const sql = `INSERT INTO label_category (${field}) VALUES (${value})`;
+
+    const sql = `INSERT INTO ${labelcategoryTabel} (${field}) VALUES (${value})`;
 
     const [data] = await db.promise().query(sql);
 
@@ -57,6 +68,6 @@ const LabelCreate = async (req, res) => {
 };
 
 module.exports = {
-  LabelGet,
-  LabelCreate
+  labelGet,
+  labelCreate,
 };

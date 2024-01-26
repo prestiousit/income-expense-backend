@@ -1,6 +1,12 @@
 const db = require("../../../config/database");
-
-const BankCreate = async (req, res) => {
+const {
+  bankTabel,
+  userTabel,
+  labelcategoryTabel,
+  transactionTabel
+} = require("../../../database/tabelName");
+const { jwtTokenVerify } = require("../../../helper/methods");
+const bankCreate = async (req, res) => {
   try {
     let {
       bankname,
@@ -13,7 +19,7 @@ const BankCreate = async (req, res) => {
       user,
       description,
       status,
-      label,
+      bankLabel,
       color,
     } = req.body;
 
@@ -40,29 +46,33 @@ const BankCreate = async (req, res) => {
       user,
       description,
       status,
-      label,
+      bankLabel,
       color,
       (isDeleted = 0),
-      (createdBy = "1"), // store user id now i set defualt value
+
+      (createdBy = "1"),
       (createdAt = new Date()),
     ];
 
     const placeholders = values.map((values) => `'${values}'`).join(",");
 
-    console.log(placeholders);
 
-    const sql = `INSERT INTO bank
+    const sql = `INSERT INTO ${bankTabel}
       (bankName, bankNickName, bankBranch, accountNo, IFSC_code, amount, mobileNo, user, description, status, bankLabel, color,isDeleted,createdBy,createdAt)
        VALUES (${placeholders})`;
 
     const [bank] = await db.promise().query(sql, values);
 
-    console.log("Quary=====>", sql);
+
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type) VALUES (${bank.insertId},${user},${amount},${bankLabel},"Income")`
+    const [transaction] = await db.promise().query(sql1);
+    console.log("sqlll===>",sql1);
 
     res.status(201).json({
       status: "sucess",
       message: "bank Inserted successfully",
-      bank: bank,
+      data: bank,
+      transaction: transaction
     });
   } catch (error) {
     res.status(404).json({
@@ -72,65 +82,22 @@ const BankCreate = async (req, res) => {
   }
 };
 
-const BankUpdate = async (req, res) => {
+const bankUpdate = async (req, res) => {
   try {
     const bankId = req.query.id;
-    const [bank] = await db
-      .promise()
-      .query("SELECT * FROM bank WHERE id = ?", [bankId]);
+    const tokenData = await jwtTokenVerify(req.headers.token);
 
-    if (!bank || bank.length === 0) {
-      throw new Error("bank not found");
-    }
+    req.body.updatedAt = new Date();
+    req.body.updatedBy = tokenData.id;
 
-    let {
-      bankname,
-      banknickname,
-      bankbranch,
-      accountno,
-      ifsc_code,
-      amount,
-      mobileno,
-      user,
-      description,
-      status,
-      label,
-      color,
-    } = req.body;
 
-    bankname = bankname ?? bank[0].bankName;
-    banknickname = banknickname ?? bank[0].bankNickName;
-    bankbranch = bankbranch ?? bank[0].bankBranch;
-    accountno = accountno ?? bank[0].accountNo;
-    ifsc_code = ifsc_code ?? usbanker[0].IFSC_code;
-    amount = amount ?? bank[0].amount;
-    mobileno = mobileno ?? bank[0].mobileNo;
-    user = user ?? user[0].user;
-    description = description ?? bank[0].description;
-    status = status ?? bank[0].status;
-    label = label ?? bank[0].bankLabel;
-    color = color ?? bank[0].color;
+    const updateFields = Object.keys(req.body)
+      .map((key) => `${key} = '${req.body[key]}'`)
+      .join(", ");
 
-    const [updateuser] = await db
-      .promise()
-      .query(
-        "UPDATE bank SET bankName=? ,bankNickName=? ,bankBranch=? ,accountNo=? ,IFSC_code=? ,amount=? ,mobileNo=? ,user=? ,description=? ,status=? ,bankLabel=? ,color=?  WHERE id = ?",
-        [
-          bankname,
-          banknickname,
-          bankbranch,
-          accountno,
-          ifsc_code,
-          amount,
-          mobileno,
-          user,
-          description,
-          status,
-          label,
-          color,
-          bankId,
-        ]
-      );
+    const Quary = `UPDATE ${bankTabel} SET ${updateFields} WHERE id = ${bankId}`;
+
+    const [updateuser] = await db.promise().query(Quary);
 
     res.status(200).json({
       status: "success",
@@ -145,36 +112,22 @@ const BankUpdate = async (req, res) => {
   }
 };
 
-const BankGet = async (req, res) => {
+const bankGet = async (req, res) => {
   try {
-    const filed = [
-      "id",
-      "bankName",
-      "bankNickName",
-      "bankBranch",
-      "accountNo",
-      "IFSC_code",
-      "mobileNo",
-      "description",
-    ];
-    const sql = `SELECT ${filed.toString()} FROM bank WHERE isDeleted = 0 AND status = 'active'`;
+    const sql = `
+      SELECT b.id,bankName,bankNickName,amount,user as userid ,bankLabel as labelid,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
+      FROM ${bankTabel} b
+      LEFT JOIN ${userTabel} u ON b.user = u.id
+      LEFT JOIN ${labelcategoryTabel} l ON b.bankLabel = l.id
+      WHERE b.isDeleted = 0`;
 
-    const [data] = await db.promise().query(sql);
+    const [Data] = await db.promise().query(sql);
 
-    if (!data || data.length === 0) {
-      throw new Error("no data found");
-    }
-
-    // const Data =
-    //  await data.map((value)=>{
-
-    //     return value
-    //   })
-
+    console.log(Data);
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data,
+      data: Data,
     });
   } catch (error) {
     res.status(404).json({
@@ -184,20 +137,22 @@ const BankGet = async (req, res) => {
   }
 };
 
-const BankDelete = async (req, res) => {
+const bankDelete = async (req, res) => {
   try {
+    const tokenData = await jwtTokenVerify(req.headers.token);
     const bankId = req.query.id;
-    const [bank] = await db
-      .promise()
-      .query("SELECT * FROM bank WHERE id = ?", [bankId]);
+    const query = `SELECT * FROM ${bankTabel} WHERE id = ${bankId}`;
+
+    const [bank] = await db.promise().query(query);
 
     if (!bank || bank.length === 0) {
       throw new Error("bank not found");
     }
 
-    const [deletebank] = await db
-      .promise()
-      .query("UPDATE bank SET isDeleted = 1 WHERE id = ?", [bankId]);
+    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${new Date()}', deletedBy = ${
+      tokenData.id
+    } WHERE id = ${bankId}`;
+    const [deletebank] = await db.promise().query(deleteQuery);
 
     res.status(200).json({
       status: "success",
@@ -212,32 +167,26 @@ const BankDelete = async (req, res) => {
   }
 };
 
-const BankGetDropDown = async (req, res) => {
+
+const bankGetDropDown = async (req, res) => {
   try {
-    const filed = [
-      "id",
-      "bankNickName",
-    ];
-    const sql = `SELECT ${filed.toString()} FROM bank WHERE isDeleted = 0 AND status = 'active'`;
+    const filed = ["id", "bankNickName"];
+    const sql = `SELECT ${filed.toString()} FROM ${bankTabel} WHERE isDeleted = 0 AND status = 'active'`;
 
     const [data] = await db.promise().query(sql);
 
-    if (!data || data.length === 0) {
-      throw new Error("no data found");
-    }
 
-    const Data = await data.map((value)=>{
-      return{
-        value : value.id,
-        label : value.bankNickName
-      }
-    }) 
+    const Data = await data.map((value) => {
+      return {
+        value: value.id,
+        label: value.bankNickName,
+      };
+    });
 
-    console.log(Data);
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data,
+      data: Data,
     });
   } catch (error) {
     res.status(404).json({
@@ -248,9 +197,10 @@ const BankGetDropDown = async (req, res) => {
 };
 
 module.exports = {
-  BankCreate,
-  BankUpdate,
-  BankGet,
-  BankDelete,
-  BankGetDropDown
+
+  bankCreate,
+  bankUpdate,
+  bankGet,
+  bankDelete,
+  bankGetDropDown,
 };

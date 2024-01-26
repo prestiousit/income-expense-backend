@@ -1,10 +1,11 @@
 const express = require("express");
 const {
-  LabelGet, LabelCreate
+
+  labelGet, labelCreate
 } = require("../../controllers/label");
 const router = express();
 
-router.get("/get", LabelGet);
-router.post("/create", LabelCreate);
+router.get("/get", labelGet);
+router.post("/create", labelCreate);
 
 module.exports = router;

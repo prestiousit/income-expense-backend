@@ -1,25 +1,22 @@
 const db = require("../../../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { adminUserTabel } = require("../../../database/tabelName");
 
-const AdminUserRegister = async (req, res) => {
+const adminUserRegister = async (req, res) => {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
       throw new Error("Username or Password is Required");
-    } 
+    }
     req.body.password = await bcrypt.hash(password, 10);
-    console.log("password======>",req.body.password);
-    const [user] = await db
-      .promise()
-      .query("INSERT INTO adminUser (username,password) VALUES (?,?)", [
-        username,
-        req.body.password,
-      ]);
+    const query = `INSERT INTO ${adminUserTabel} (username,password,status) VALUES ("${username}",'${req.body.password}','active')`;
+    const [user] = await db.promise().query(query);
     res.status(201).json({
       status: "success",
       message: "user created successfully",
+      data : user
     });
   } catch (error) {
     res.status(404).json({
@@ -29,34 +26,32 @@ const AdminUserRegister = async (req, res) => {
   }
 };
 
-const AdminUserLogin = async (req, res) => {
+const adminUserLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const [user] = await db
-      .promise()
-      .query("SELECT * FROM adminUser WHERE username = ?", [username]);
+    const query = `SELECT * FROM ${adminUserTabel} WHERE username = "${username}"`;
+    const [user] = await db.promise().query(query);
 
     if (!user || user.length === 0) {
       throw new Error("Incorrect username or password");
     }
 
-    const checkpaasword = await bcrypt.compare(
-      password,
-      user[0].password
-    );
+    const checkpaasword = await bcrypt.compare(password, user[0].password);
     if (!checkpaasword) {
       throw new Error("Incorrect username or 'password'");
     }
 
-    const token = jwt.sign({ id: user[0].id,username : user[0].username }, "SURAT");
-
+    const token = jwt.sign(
+      { id: user[0].id, username: user[0].username },
+      process.env.SECRET_KEY
+    );
 
     res.status(200).json({
       status: "success",
       message: "Login successfully",
       user: user[0],
-      token
+      token,
     });
   } catch (error) {
     res.status(404).json({
@@ -66,21 +61,18 @@ const AdminUserLogin = async (req, res) => {
   }
 };
 
-const AdminUserDelete = async (req, res) => {
+const adminUserDelete = async (req, res) => {
   try {
     const userId = req.query.id;
-
-    const [user] = await db
-      .promise()
-      .query("SELECT * FROM adminUser WHERE id = ?", [userId]);
+    const query = `SELECT * FROM ${adminUserTabel} WHERE id = ${userId}`;
+    const [user] = await db.promise().query(query);
 
     if (!user || user.length === 0) {
       throw new Error("user not found");
     }
 
-    const [deleteuser] = await db
-      .promise()
-      .query("DELETE FROM adminUser WHERE id = ?", [userId]);
+    const deleteQuery = `DELETE FROM ${adminUserTabel} WHERE id = ${userId}`;
+    const [deleteuser] = await db.promise().query(deleteQuery);
 
     res.status(200).json({
       status: "success",
@@ -95,12 +87,11 @@ const AdminUserDelete = async (req, res) => {
   }
 };
 
-const AdminUserUpdate = async (req, res) => {
+const adminUserUpdate = async (req, res) => {
   try {
     const userId = req.query.id;
-    const [user] = await db
-      .promise()
-      .query("SELECT * FROM adminUser WHERE id = ?", [userId]);
+    const query = `SELECT * FROM ${adminUserTabel} WHERE id = ${userId}`;
+    const [user] = await db.promise().query(query);
 
     if (!user || user.length === 0) {
       throw new Error("user not found");
@@ -110,12 +101,9 @@ const AdminUserUpdate = async (req, res) => {
     username = username ?? user[0].username;
     password = password ?? user[0].password;
 
-    const [updateuser] = await db
-      .promise()
-      .query(
-        "UPDATE adminUser SET username = ? , password = ? WHERE id = ?",
-        [username, password, userId]
-      );
+    const updateQuery = `UPDATE ${adminUserTabel} SET username = ${username} , password = ${password} WHERE id = ${userId}`;
+
+    const [updateuser] = await db.promise().query(updateQuery);
 
     res.status(200).json({
       status: "success",
@@ -131,8 +119,8 @@ const AdminUserUpdate = async (req, res) => {
 };
 
 module.exports = {
-  AdminUserRegister,
-  AdminUserLogin,
-  AdminUserDelete,
-  AdminUserUpdate
+  adminUserRegister,
+  adminUserLogin,
+  adminUserDelete,
+  adminUserUpdate,
 };

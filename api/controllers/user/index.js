@@ -1,16 +1,21 @@
 const moment = require("moment");
 const db = require("../../../config/database");
+const { userTabel } = require("../../../database/tabelName");
+const { jwtTokenVerify } = require("../../../helper/methods");
 
-const UserCreate = async (req, res) => {
+const userCreate = async (req, res) => {
   try {
+
+    const tokenData = await jwtTokenVerify(req.headers.token);
+
     const { name, description, mobileNo, status } = req.body;
 
     if (!name) throw new Error("Name is Required..!");
     if (!status) req.body.status = "active";
 
-    //  req.body.createdBy = "" //pass admin id using auth
+     req.body.createdBy = tokenData.id 
     req.body.isDeleted = 0;
-    req.body.createdAt = moment().format("YYYY-MM-DD hh:mm:ss");
+    req.body.createdAt = new Date();
 
     const field = Object.keys(req.body)
       .map((key) => key)
@@ -19,11 +24,9 @@ const UserCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .toString();
 
-    const Query = `INSERT INTO user (${field}) VALUES (${value})`;
+    const query = `INSERT INTO ${userTabel} (${field}) VALUES (${value})`;
 
-    const [data] = await db.promise().query(Query);
-
-    console.log(Query);
+    const [data] = await db.promise().query(query);
     res.status(200).json({
       status: "success",
       message: "user Created successfully",
@@ -37,18 +40,18 @@ const UserCreate = async (req, res) => {
   }
 };
 
-const UserGet = async (req, res) => {
+const userGet = async (req, res) => {
   try {
-    const Query = 'select id,name from user'
-    const [user] = await db.promise().query(Query);
+    const query = `select id,name from ${userTabel}`;
+    const [user] = await db.promise().query(query);
 
-    const data = await user.map((el)=>{
+    const data = await user.map((el) => {
       return {
-        value : el.id,
-        label : el.name
-      }
-    });
 
+        value: el.id,
+        label: el.name,
+      };
+    });
     res.status(200).json({
       status: "success",
       message: "user find successfully",
@@ -62,8 +65,7 @@ const UserGet = async (req, res) => {
   }
 };
 
-
 module.exports = {
-  UserCreate,
-  UserGet
+  userCreate,
+  userGet,
 };

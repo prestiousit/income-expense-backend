@@ -1,4 +1,5 @@
 
+package-lock.json
 # Logs
 logs
 *.log
@@ -103,4 +104,3 @@ dist
 
 # TernJS port file
 .tern-port
->>>>>>> 4ffa9ff6f07fd537b19df1e425b4f2fe6cd0f654
