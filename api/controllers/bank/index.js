@@ -33,7 +33,7 @@ const bankCreate = async (req, res) => {
     }
 
     if (!status) {
-      req.body.status  = "active";
+      req.body.status = "active";
     }
 
     req.body.status = "active";
@@ -58,11 +58,11 @@ const bankCreate = async (req, res) => {
     if (!bankLabel) {
       bankLabel = "null";
     }
-      const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${
-        bank.insertId
-      },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
-      console.log("sqlll===>", sql1);
-      const [transaction] = await db.promise().query(sql1);
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${
+      bank.insertId
+    },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
+    console.log("sqlll===>", sql1);
+    const [transaction] = await db.promise().query(sql1);
 
     res.status(201).json({
       status: "sucess",
@@ -88,7 +88,7 @@ const bankUpdate = async (req, res) => {
 
     const updateFields = Object.keys(req.body)
       .map((key) => {
-        if(req.body[key] !== null){
+        if (req.body[key] !== null) {
           req.body[key] = `'${req.body[key]}'`;
         }
         return `${key} = ${req.body[key]}`;
@@ -115,16 +115,68 @@ const bankUpdate = async (req, res) => {
 const bankGet = async (req, res) => {
   try {
     const sql = `
-      SELECT b.id,bankName,bankNickName,amount,user as userid ,bankLabel as labelid,bankBranch,accountNo,IFSC_code,b.mobileNo,u.name as username,b.description,l.name as bankLabel,b.status,b.color
-      FROM ${bankTabel} b
-      LEFT JOIN ${userTabel} u ON b.user = u.id
-      LEFT JOIN ${labelcategoryTabel} l ON b.bankLabel = l.id
-      WHERE b.isDeleted = 0
+    SELECT
+    t2.credit,
+    t3.debit,
+    b.id,
+    b.bankName,
+    b.bankNickName,
+    b.amount,
+    b.user AS userid,
+    b.bankLabel AS labelid,
+    b.bankBranch,
+    b.accountNo,
+    b.IFSC_code,
+    b.mobileNo,
+    u.name AS username,
+    b.description,
+    l.name AS bankLabel,
+    b.status,
+    b.color
+FROM
+    ${bankTabel} b
+LEFT JOIN
+    ${userTabel} u ON b.user = u.id
+LEFT JOIN
+    ${labelcategoryTabel} l ON b.bankLabel = l.id
+LEFT JOIN
+    (
+        SELECT
+            bank,
+            SUM(amount) AS credit
+        FROM
+            ${transactionTabel}
+        WHERE
+            isDeleted = 0
+            AND type = 'Income'
+        GROUP BY
+            bank
+    ) t2
+ON
+    b.id = t2.bank
+LEFT JOIN
+    (
+        SELECT
+            bank,
+            SUM(amount) AS debit
+        FROM
+            ${transactionTabel}
+        WHERE
+            isDeleted = 0
+            AND type = 'Expense'
+
+        GROUP BY
+            bank
+    ) t3
+ON
+    b.id = t3.bank
+WHERE
+    b.isDeleted = 0;
+
+
       `;
 
     const [Data] = await db.promise().query(sql);
-
-    
 
     console.log(Data);
     res.status(200).json({
