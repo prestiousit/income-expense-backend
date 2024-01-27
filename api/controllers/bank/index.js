@@ -197,5 +197,5 @@ module.exports = {
   bankUpdate,
   bankGet,
   bankDelete,
-  bankGetDropDown,
+  bankGetDropDown
 };
