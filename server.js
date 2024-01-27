@@ -35,6 +35,7 @@ exports.start_server = async () => {
         return;
       }
       logging.info("Server started on " + process.env.PORT || 5000);
+      console.log(process.env.PORT);
     });
   } catch (error) {
     logging.error(`Error Occured! - start_server - ${error}`);
