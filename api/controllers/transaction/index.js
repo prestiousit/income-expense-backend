@@ -81,63 +81,49 @@ const transactionUpdate = async (req, res) => {
   try {
     const transactionId = req.query.id;
     const tokenData = await jwtTokenVerify(req.headers.token);
-
     req.body.updatedAt = new Date();
     req.body.updatedBy = tokenData.id;
-
     const selectQuery = `SELECT * FROM ${transactionTabel} WHERE id = ${transactionId}`;
     const [transaction] = await db.promise().query(selectQuery);
-
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
     const updateFields = Object.keys(req.body)
       .map((key) => `${key} = '${req.body[key]}'`)
       .join(", ");
-
     const query = `UPDATE ${transactionTabel} SET ${updateFields}WHERE id = ${transactionId}`;
     const [updatedTransaction] = await db.promise().query(query);
-
     const query_bank = `
     SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
     FROM transaction t
     LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transactionId} AND paymentStatus = 'Paid'`;
-
-    console.log("query_bank=====>", query_bank);
     const [bankdata] = await db.promise().query(query_bank);
-
-    
-    
-    
-    
     let bankamount;
     if (bankdata.length > 0) {
+      let amountdata = 0;
+      if (bankdata[0].credit < transaction[0].amount) {
+        amountdata = transaction[0].amount - bankdata[0].credit;
+        amountdata = `amount = amount - ${amountdata}`;
+      } else if (bankdata[0].credit > transaction[0].amount) {
+        amountdata = bankdata[0].credit - transaction[0].amount;
+        amountdata = `amount = amount + ${amountdata}`;
+      }
+      console.log("\namount============>", amountdata);
       if (bankdata[0].credit) {
-        const transctionAmount = transaction[0].amount
-
-        let amount;
-        if(transctionAmount > bankdata[0].credit){
-           amount = `amount = amount + ${bankdata[0].credit}`
-        }else if(transctionAmount > bankdata[0].credit){
-          amount = `amount = amount - ${bankdata[0].credit}`
-        }
-        
-        const query_bank_amount = `UPDATE ${bankTabel} SET ${amount}  WHERE id=${req.body.bank}`;
+        const query_bank_amount = `UPDATE ${bankTabel} SET ${amountdata}  WHERE id=${req.body.bank}`;
         [bankamount] = await db.promise().query(query_bank_amount);
       } else if (bankdata[0].debit) {
-
-        const transctionAmount = transaction[0].amount
-        if(transctionAmount > bankdata[0].debit){
-          amount = `amount = amount + ${bankdata[0].debit}`
-       }else if(transctionAmount > bankdata[0].debit){
-         amount = `amount = amount - ${bankdata[0].debit}`
-       }
-        const query_bank_amount = `UPDATE ${bankTabel} SET ${amount} WHERE id=${req.body.bank}`;
+        const transctionAmount = transaction[0].amount;
+        if (transctionAmount > bankdata[0].debit) {
+          amount = `amount = amount + ${bankdata[0].debit}`;
+        } else if (transctionAmount > bankdata[0].debit) {
+          amount = `amount = amount - ${bankdata[0].debit}`;
+        }
+        const query_bank_amount = `UPDATE ${bankTabel} SET ${amountdata} WHERE id=${req.body.bank}`;
         [bankamount] = await db.promise().query(query_bank_amount);
       }
     }
-
     res.status(200).json({
       status: "success",
       message: "transaction updated successfully",
@@ -150,7 +136,6 @@ const transactionUpdate = async (req, res) => {
     });
   }
 };
-
 const transactionGet = async (req, res) => {
   try {
     const sql = `SELECT t.id,t.date,t.bank as bankid,t.type,t.amount,t.description,u.name,t.paidBy as userid,b.bankNickName,t.paymentStatus,t.transactionLabel as labelid,l.name as label,t.color,credit.credit as credit,debit.debit as debit
