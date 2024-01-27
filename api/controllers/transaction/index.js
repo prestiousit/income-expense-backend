@@ -87,37 +87,51 @@ const transactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
+    let Money = req.body.amount;
+
+
     const updateFields = Object.keys(req.body)
-      .map((key) => `${key} = '${req.body[key]}'`)
+      .map((key) => {
+        if (req.body[key] !== null) {
+          req.body[key] = `'${req.body[key]}'`;
+        }
+        return `${key} = ${req.body[key]}`;
+      })
       .join(", ");
     const query = `UPDATE ${transactionTabel} SET ${updateFields}WHERE id = ${transactionId}`;
     const [updatedTransaction] = await db.promise().query(query);
+
     const query_bank = `
-    SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
+    SELECT t.id,t.bank,t.amount,type,credit.credit as credit,debit.debit as debit
     FROM transaction t
     LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transactionId} AND paymentStatus = 'Paid'`;
     const [bankdata] = await db.promise().query(query_bank);
-    let bankamount;
-    if (bankdata.length > 0) {
-      let amountdata = 0;
-      if (bankdata[0].credit < transaction[0].amount) {
-        amountdata = transaction[0].amount - bankdata[0].credit;
-        amountdata = `amount = amount - ${amountdata}`;
-      } else if (bankdata[0].credit > transaction[0].amount) {
-        amountdata = bankdata[0].credit - transaction[0].amount;
-        amountdata = `amount = amount + ${amountdata}`;
-      } else {
-        amountdata = `amount = amount + 0`;
-      }
-      if (bankdata[0].credit) {
-        const query_bank_amount = `UPDATE ${bankTabel} SET ${amountdata}  WHERE id=${req.body.bank}`;
-        [bankamount] = await db.promise().query(query_bank_amount);
-      } else if (bankdata[0].debit) {
-        const query_bank_amount = `UPDATE ${bankTabel} SET ${amountdata} WHERE id=${req.body.bank}`;
-        [bankamount] = await db.promise().query(query_bank_amount);
-      }
+
+    const bank_amount_query = `
+    SELECT amount FROM ${bankTabel} WHERE id=${req.body.bank}`;
+    const [bank_amount] = await db.promise().query(bank_amount_query);
+
+    let oldAmount = transaction[0].amount;
+
+    console.log("bank_amount=============>",bank_amount[0]);
+
+    if(oldAmount == Money){
+      oldAmount = 0;
     }
+    
+    let total = 0;
+    if (bankdata[0].type === "Income") {
+      total = +(bank_amount[0].amount) - oldAmount + Money;
+    } else if (bankdata[0].type === "Expense") {
+      total = +(bank_amount[0].amount) + oldAmount + Money;
+    }
+    console.log("Query=====>",bank_amount[0].amount,oldAmount,Money,total);
+
+    const query_bank_amount = `UPDATE ${bankTabel} SET amount = ${total} WHERE id=${req.body.bank}`;
+    const [bankamount] = await db.promise().query(query_bank_amount);
+
+
     res.status(200).json({
       status: "success",
       message: "transaction updated successfully",
