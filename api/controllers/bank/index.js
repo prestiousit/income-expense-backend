@@ -119,9 +119,12 @@ const bankGet = async (req, res) => {
       FROM ${bankTabel} b
       LEFT JOIN ${userTabel} u ON b.user = u.id
       LEFT JOIN ${labelcategoryTabel} l ON b.bankLabel = l.id
-      WHERE b.isDeleted = 0`;
+      WHERE b.isDeleted = 0
+      `;
 
     const [Data] = await db.promise().query(sql);
+
+    
 
     console.log(Data);
     res.status(200).json({
