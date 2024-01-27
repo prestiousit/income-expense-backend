@@ -58,13 +58,11 @@ const bankCreate = async (req, res) => {
     if (!bankLabel) {
       bankLabel = "null";
     }
-    if (accountno && ifsc_code) {
       const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${
         bank.insertId
       },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
       console.log("sqlll===>", sql1);
       const [transaction] = await db.promise().query(sql1);
-    }
 
     res.status(201).json({
       status: "sucess",
@@ -89,7 +87,12 @@ const bankUpdate = async (req, res) => {
     req.body.updatedBy = tokenData.id;
 
     const updateFields = Object.keys(req.body)
-      .map((key) => `${key} = '${req.body[key]}'`)
+      .map((key) => {
+        if(req.body[key] !== null){
+          req.body[key] = `'${req.body[key]}'`;
+        }
+        return `${key} = ${req.body[key]}`;
+      })
       .join(", ");
 
     const Quary = `UPDATE ${bankTabel} SET ${updateFields} WHERE id = ${bankId}`;
