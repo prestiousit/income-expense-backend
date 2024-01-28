@@ -61,7 +61,7 @@ const bankCreate = async (req, res) => {
 
     const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,paymentStatus,date) VALUES (${
       bank.insertId
-    },${user},${amount},${bankLabel},"Income","Paid",'${new Date()}')`;
+    },${user},${amount},${bankLabel},"Income","Paid",'${new Date().toISOString()}')`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
