@@ -87,9 +87,8 @@ const transactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
-    let Money = req.body.amount;
 
-
+    let bodyAmount = req.body.amount;
     const updateFields = Object.keys(req.body)
       .map((key) => {
         if (req.body[key] !== null) {
@@ -111,26 +110,26 @@ const transactionUpdate = async (req, res) => {
     const bank_amount_query = `
     SELECT amount FROM ${bankTabel} WHERE id=${req.body.bank}`;
     const [bank_amount] = await db.promise().query(bank_amount_query);
+    let oldAmount = bank_amount[0].amount;
+    // console.log("bank_amount=============>", transaction[0].amount);
 
-    let oldAmount = transaction[0].amount;
-
-    console.log("bank_amount=============>",bank_amount[0]);
-
-    if(oldAmount == Money){
-      oldAmount = 0;
+    let newValue = oldAmount;
+    if (bankdata[0].type !== transaction[0].type) {
+      if (bankdata[0].type === "Expense") {
+        newValue -= transaction[0].amount;
+        newValue -= bodyAmount;
+      }
+      if (bankdata[0].type === "Income") {
+        newValue = +transaction[0].amount + +newValue;
+        newValue = +bodyAmount + +newValue;
+      }
+    } else {
+      newValue -= transaction[0].amount;
+      newValue += bodyAmount;
     }
-    
-    let total = 0;
-    if (bankdata[0].type === "Income") {
-      total = +(bank_amount[0].amount) - oldAmount + Money;
-    } else if (bankdata[0].type === "Expense") {
-      total = +(bank_amount[0].amount) + oldAmount + Money;
-    }
-    console.log("Query=====>",bank_amount[0].amount,oldAmount,Money,total);
-
-    const query_bank_amount = `UPDATE ${bankTabel} SET amount = ${total} WHERE id=${req.body.bank}`;
+    // console.log("milan=>", newValue, transaction[0].amount, bodyAmount);
+    const query_bank_amount = `UPDATE ${bankTabel} SET amount = ${newValue} WHERE id=${req.body.bank}`;
     const [bankamount] = await db.promise().query(query_bank_amount);
-
 
     res.status(200).json({
       status: "success",
@@ -144,15 +143,24 @@ const transactionUpdate = async (req, res) => {
     });
   }
 };
+
+
 const transactionGet = async (req, res) => {
   try {
-    const sql = `SELECT t.id,t.date,t.bank as bankid,t.type,t.amount,t.description,u.name,t.paidBy as userid,b.bankNickName,t.paymentStatus,t.transactionLabel as labelid,l.name as label,t.color,credit.credit as credit,debit.debit as debit
-    FROM ${transactionTabel} t
-    LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
-    LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
-    LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
-    LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
-    LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`;
+    const month = req.body.month ||moment().month() + 1;
+    const year = req.body.year || moment().year();
+
+    const sql = `WITH CurrentMonthData AS (
+      SELECT t.id, t.date, t.bank AS bankid, t.type, t.amount, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color, credit.credit AS credit, debit.debit AS debit
+      FROM ${transactionTabel} t
+      LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
+      LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
+      LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
+      LEFT OUTER JOIN (SELECT id, amount AS credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
+      LEFT OUTER JOIN (SELECT id, amount AS debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id
+      WHERE t.isDeleted = 0
+  )
+  SELECT * FROM CurrentMonthData WHERE MONTH(date) = ${month} AND YEAR(date) = ${year} ORDER BY date ASC;`;
 
     const [transaction] = await db.promise().query(sql);
 

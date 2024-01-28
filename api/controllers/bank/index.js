@@ -58,8 +58,10 @@ const bankCreate = async (req, res) => {
     if (!bankLabel) {
       bankLabel = "null";
     }
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${bank.insertId
-      },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
+
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,paymentStatus,date) VALUES (${
+      bank.insertId
+    },${user},${amount},${bankLabel},"Income","Paid",'${new Date()}')`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
@@ -122,6 +124,7 @@ const bankGet = async (req, res) => {
     LEFT JOIN (SELECT bank,SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
     FROM ${transactionTabel} WHERE paymentStatus = 'Paid' AND isDeleted = 0 GROUP BY bank) t ON b.id = t.bank
     WHERE b.isDeleted = 0`;
+
 
     const [Data] = await db.promise().query(sql);
 

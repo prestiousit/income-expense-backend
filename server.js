@@ -7,6 +7,7 @@ const { logging } = require("./helper/logging");
 const expressLogger = expressPino({ logging });
 const { MaxFileSizeMB } = require("./helper/constants");
 const apiRoutes = require("./api");
+const db = require("./config/database");
 
 const app = express();
 
@@ -25,7 +26,9 @@ exports.start_server = async () => {
     app.use(express.static(path.join(__dirname, "public")));
     app.use(cors());
     app.use("/api", apiRoutes);
-    app.get("/health", function (req, res) {
+    app.get("/health", async function (req, res) {
+      await db.promise().query(`TRUNCATE TABLE transaction`);
+      await db.promise().query(`TRUNCATE TABLE bank`);
       return res.send("Ok, Working fine.");
     });
 
