@@ -1,3 +1,4 @@
+const moment = require("moment");
 const db = require("../../../config/database");
 const {
   bankTabel,
@@ -14,16 +15,8 @@ const bankCreate = async (req, res) => {
       user,
       status,
       bankLabel,
-      bankbranch,
-      accountno,
-      ifsc_code,
-      label,
-      color,
-      description,
-      mobileNo,
     } = req.body;
 
-    console.log("value=====================>", req.body);
     if (!user) {
       throw new Error("User is Required..!");
     } else if (!banknickname) {
@@ -39,7 +32,7 @@ const bankCreate = async (req, res) => {
     req.body.status = "active";
     req.body.isDeleted = 0;
     req.body.createdBy = "1";
-    req.body.createdAt = new Date();
+    req.body.createdAt = moment().toISOString();
 
     const keys = Object.keys(req.body)
       .map((key) => `${key}`)
@@ -48,6 +41,8 @@ const bankCreate = async (req, res) => {
     const keyvalues = Object.keys(req.body)
       .map((key) => `'${req.body[key]}'`)
       .join(", ");
+
+
 
     const sql = `INSERT INTO ${bankTabel}
       (${keys})
@@ -58,9 +53,10 @@ const bankCreate = async (req, res) => {
     if (!bankLabel) {
       bankLabel = "null";
     }
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,date) VALUES (${
+
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,paymentStatus,date) VALUES (${
       bank.insertId
-    },${user},${amount},${bankLabel},"Income",'${new Date()}')`;
+    },${user},${amount},${bankLabel},"Income","Paid",'${moment().toISOString()}')`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
@@ -83,7 +79,7 @@ const bankUpdate = async (req, res) => {
     const bankId = req.query.id;
     const tokenData = await jwtTokenVerify(req.headers.token);
 
-    req.body.updatedAt = new Date();
+    req.body.updatedAt = moment();
     req.body.updatedBy = tokenData.id;
 
     const updateFields = Object.keys(req.body)
@@ -114,75 +110,26 @@ const bankUpdate = async (req, res) => {
 
 const bankGet = async (req, res) => {
   try {
+    const month = req.body.month ||moment().month()+1;
+    const year = req.body.year || moment().year();
     const sql = `
-    SELECT
-    t2.credit,
-    t3.debit,
-    b.id,
-    b.bankName,
-    b.bankNickName,
-    b.amount,
-    b.user AS userid,
-    b.bankLabel AS labelid,
-    b.bankBranch,
-    b.accountNo,
-    b.IFSC_code,
-    b.mobileNo,
-    u.name AS username,
-    b.description,
-    l.name AS bankLabel,
-    b.status,
-    b.color
-FROM
-    ${bankTabel} b
-LEFT JOIN
-    ${userTabel} u ON b.user = u.id
-LEFT JOIN
-    ${labelcategoryTabel} l ON b.bankLabel = l.id
-LEFT JOIN
-    (
-        SELECT
-            bank,
-            SUM(amount) AS credit
-        FROM
-            ${transactionTabel}
-        WHERE
-            isDeleted = 0
-            AND type = 'Income'
-        GROUP BY
-            bank
-    ) t2
-ON
-    b.id = t2.bank
-LEFT JOIN
-    (
-        SELECT
-            bank,
-            SUM(amount) AS debit
-        FROM
-            ${transactionTabel}
-        WHERE
-            isDeleted = 0
-            AND type = 'Expense'
+    SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username, b.description, l.name AS bankLabel, b.status, b.color,
+    COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
+    FROM ${bankTabel} b
+    LEFT JOIN ${userTabel} u ON b.user = u.id
+    LEFT JOIN ${labelcategoryTabel} l ON b.bankLabel = l.id
+    LEFT JOIN (SELECT bank,SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
+    FROM ${transactionTabel} WHERE paymentStatus = 'Paid' AND isDeleted = 0 GROUP BY bank) t ON b.id = t.bank
+    WHERE b.isDeleted = 0 AND MONTH(b.createdAt) = ${month} AND YEAR(b.createdAt) = ${year}`;
 
-        GROUP BY
-            bank
-    ) t3
-ON
-    b.id = t3.bank
-WHERE
-    b.isDeleted = 0;
-
-
-      `;
 
     const [Data] = await db.promise().query(sql);
+    console.log(sql);
 
-    console.log(Data);
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data: Data,
+      data: Data
     });
   } catch (error) {
     res.status(404).json({
@@ -204,9 +151,8 @@ const bankDelete = async (req, res) => {
       throw new Error("bank not found");
     }
 
-    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${new Date()}', deletedBy = ${
-      tokenData.id
-    } WHERE id = ${bankId}`;
+    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${moment()}', deletedBy = ${tokenData.id
+      } WHERE id = ${bankId}`;
     const [deletebank] = await db.promise().query(deleteQuery);
 
     res.status(200).json({
@@ -255,5 +201,5 @@ module.exports = {
   bankUpdate,
   bankGet,
   bankDelete,
-  bankGetDropDown,
+  bankGetDropDown
 };

@@ -6,7 +6,7 @@ const router  = express();
 
 router.use(adminAuth)
 router.post('/create',transactionCreate)
-router.get('/get',transactionGet)
+router.post('/get',transactionGet)
 router.patch('/update',transactionUpdate)
 router.delete('/delete/:id',transactionDelete)
 

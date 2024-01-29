@@ -87,6 +87,7 @@ const transactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
+
     let bodyAmount = req.body.amount;
     const updateFields = Object.keys(req.body)
       .map((key) => {
@@ -98,12 +99,14 @@ const transactionUpdate = async (req, res) => {
       .join(", ");
     const query = `UPDATE ${transactionTabel} SET ${updateFields}WHERE id = ${transactionId}`;
     const [updatedTransaction] = await db.promise().query(query);
+
     const query_bank = `
     SELECT t.id,t.bank,t.amount,type,credit.credit as credit,debit.debit as debit
     FROM transaction t
     LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transactionId} AND paymentStatus = 'Paid'`;
     const [bankdata] = await db.promise().query(query_bank);
+
     const bank_amount_query = `
     SELECT amount FROM ${bankTabel} WHERE id=${req.body.bank}`;
     const [bank_amount] = await db.promise().query(bank_amount_query);
@@ -140,15 +143,24 @@ const transactionUpdate = async (req, res) => {
     });
   }
 };
+
+
 const transactionGet = async (req, res) => {
   try {
-    const sql = `SELECT t.id,t.date,t.bank as bankid,t.type,t.amount,t.description,u.name,t.paidBy as userid,b.bankNickName,t.paymentStatus,t.transactionLabel as labelid,l.name as label,t.color,credit.credit as credit,debit.debit as debit
-    FROM ${transactionTabel} t
-    LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
-    LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
-    LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
-    LEFT OUTER JOIN (SELECT id,amount as credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
-    LEFT OUTER JOIN (SELECT id,amount as debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0;`;
+    const month = req.body.month ||moment().month()+1;
+    const year = req.body.year || moment().year();
+
+    console.log("body====>",req.body);
+
+    const sql = `SELECT t.id, t.date, t.bank AS bankid, t.type, t.amount, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color, credit.credit AS credit, debit.debit AS debit
+    FROM transaction t
+    LEFT OUTER JOIN user u ON t.paidBy = u.id
+    LEFT OUTER JOIN labelcategory l ON t.transactionLabel = l.id
+    LEFT OUTER JOIN bank b ON t.bank = b.id
+    LEFT OUTER JOIN (SELECT id, amount AS credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id, amount AS debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id
+    WHERE t.isDeleted = 0 AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}
+    ORDER BY t.date ASC;`
 
     const [transaction] = await db.promise().query(sql);
 
