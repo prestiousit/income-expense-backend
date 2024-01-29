@@ -6,7 +6,7 @@ const router  = express();
 
 router.use(adminAuth)
 router.post('/create',bankCreate);
-router.get('/get',bankGet)
+router.post('/get',bankGet)
 router.patch('/update',bankUpdate)
 router.delete('/delete',bankDelete)
 router.get('/getdropdown',bankGetDropDown)

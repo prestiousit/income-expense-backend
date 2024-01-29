@@ -147,20 +147,20 @@ const transactionUpdate = async (req, res) => {
 
 const transactionGet = async (req, res) => {
   try {
-    const month = req.body.month ||moment().month() + 1;
+    const month = req.body.month ||moment().month()+1;
     const year = req.body.year || moment().year();
 
-    const sql = `WITH CurrentMonthData AS (
-      SELECT t.id, t.date, t.bank AS bankid, t.type, t.amount, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color, credit.credit AS credit, debit.debit AS debit
-      FROM ${transactionTabel} t
-      LEFT OUTER JOIN ${userTabel} u ON t.paidBy = u.id
-      LEFT OUTER JOIN ${labelcategoryTabel} l ON t.transactionLabel = l.id
-      LEFT OUTER JOIN ${bankTabel} b ON t.bank = b.id
-      LEFT OUTER JOIN (SELECT id, amount AS credit FROM ${transactionTabel} WHERE type='Income') credit ON t.id = credit.id
-      LEFT OUTER JOIN (SELECT id, amount AS debit FROM ${transactionTabel} WHERE type='Expense') debit ON t.id = debit.id
-      WHERE t.isDeleted = 0
-  )
-  SELECT * FROM CurrentMonthData WHERE MONTH(date) = ${month} AND YEAR(date) = ${year} ORDER BY date ASC;`;
+    console.log("body====>",req.body);
+
+    const sql = `SELECT t.id, t.date, t.bank AS bankid, t.type, t.amount, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color, credit.credit AS credit, debit.debit AS debit
+    FROM transaction t
+    LEFT OUTER JOIN user u ON t.paidBy = u.id
+    LEFT OUTER JOIN labelcategory l ON t.transactionLabel = l.id
+    LEFT OUTER JOIN bank b ON t.bank = b.id
+    LEFT OUTER JOIN (SELECT id, amount AS credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id, amount AS debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id
+    WHERE t.isDeleted = 0 AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}
+    ORDER BY t.date ASC;`
 
     const [transaction] = await db.promise().query(sql);
 
