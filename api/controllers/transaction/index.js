@@ -14,41 +14,33 @@ const transactionCreate = async (req, res) => {
     let { date, type, amount, bank, paymentStatus, paidBy } = req.body;
     req.body.isDeleted = 0;
     req.body.createdBy = tokenData.id;
-    req.body.createdAt = moment();
-
+    req.body.createdAt = moment().toISOString();
     if (typeof bank === "string") {
       if (!amount || !paidBy) {
         throw new Error("Amount or Paid Persone Required..!");
       }
-      const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status )
-                   VALUES ('${bank}' , 0 ,${paidBy},0,'active')`;
+      const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status,createdAt )
+                   VALUES ('${bank}' , 0 ,${paidBy},0,'active','${moment().toISOString()}')`;
       const [data] = await db.promise().query(sql);
       req.body.bank = data.insertId;
     }
-
     const field = Object.keys(req.body)
       .map((key) => key)
       .toString();
     const value = Object.keys(req.body)
       .map((key) => `'${req.body[key]}'`)
       .toString();
-
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     console.log("query=============>", query);
     const [transaction] = await db.promise().query(query);
-
     const query_bank = `
     SELECT t.id,t.bank,credit.credit as credit,debit.debit as debit
     FROM transaction t
     LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transaction.insertId} AND paymentStatus = 'Paid'`;
-
     const [bankdata] = await db.promise().query(query_bank);
-
     const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bankdata[0].bank}`;
-
     const [data] = await db.promise().query(selectQuery);
-
     let bankamount;
     if (bankdata.length > 0) {
       if (bankdata[0].credit) {
@@ -59,11 +51,9 @@ const transactionCreate = async (req, res) => {
         [bankamount] = await db.promise().query(query_bank_amount);
       }
     }
-
     res.status(201).json({
       status: "sucess",
       message: "transaction Inserted successfully",
-
       data: transaction,
       bank: bankdata,
       // bankamount:bankamount
