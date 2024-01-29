@@ -14,14 +14,15 @@ const transactionCreate = async (req, res) => {
     let { date, type, amount, bank, paymentStatus, paidBy } = req.body;
     req.body.isDeleted = 0;
     req.body.createdBy = tokenData.id;
-    req.body.createdAt = moment();
+    req.body.createdAt = moment().toISOString();
+
 
     if (typeof bank === "string") {
       if (!amount || !paidBy) {
         throw new Error("Amount or Paid Persone Required..!");
       }
-      const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status )
-                   VALUES ('${bank}' , 0 ,${paidBy},0,'active')`;
+      const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status,createdAt,createdBy )
+                   VALUES ('${bank}' , 0 ,${paidBy},0,'active','${moment().toISOString()}',${tokenData.id})`;
       const [data] = await db.promise().query(sql);
       req.body.bank = data.insertId;
     }
@@ -44,13 +45,12 @@ const transactionCreate = async (req, res) => {
     LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.isDeleted = 0 AND bank=${req.body.bank} AND t.id=${transaction.insertId} AND paymentStatus = 'Paid'`;
 
     const [bankdata] = await db.promise().query(query_bank);
-
-    const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bankdata[0].bank}`;
-
-    const [data] = await db.promise().query(selectQuery);
-
+    
     let bankamount;
     if (bankdata.length > 0) {
+      const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bankdata[0].bank}`;
+      const [data] = await db.promise().query(selectQuery);
+
       if (bankdata[0].credit) {
         const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount + ${bankdata[0].credit} WHERE id=${req.body.bank}`;
         [bankamount] = await db.promise().query(query_bank_amount);
