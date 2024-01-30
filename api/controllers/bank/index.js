@@ -114,51 +114,28 @@ const bankGet = async (req, res) => {
       (
           SELECT bank, SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
               SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
-          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) = ${year}
+          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) <= ${year}
           GROUP BY bank
       ) t ON b.id = t.bank WHERE b.isDeleted = 0 AND t.bank IS NOT NULL;`;
 
-    // const sql = `
-    // SELECT
-		// t.bank AS bankid,b.bankName, b.bankNickName, b.amount as total, b.user AS userid,u.name as username , l.name as label, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, b.description, b.status,
-		// SUM(CASE WHEN t.type = 'Income' THEN t.amount ELSE 0 END) AS credit,
-		// SUM(CASE WHEN t.type = 'Expense' THEN t.amount ELSE 0 END) AS debit
-    // FROM transaction t
-    // LEFT JOIN bank b ON b.id = t.bank
-    // LEFT JOIN user u ON b.user = u.id
-    // LEFT JOIN labelcategory l ON b.bankLabel = l.id
-    // WHERE t.isDeleted = 0 AND MONTH(t.date) <= ${month} AND YEAR(t.date) = ${year}
-    // GROUP BY t.bank, MONTH(t.date), YEAR(t.date)
-    // ORDER BY t.bank ASC`;
-
     const [Data] = await db.promise().query(sql);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
+    req.body.month = req.body.month ?? (currentMonth + 1);
+    req.body.year = req.body.year ?? currentYear;
 
-    let currentMonth = new Date().getMonth();
-    function hasMonthChanged() {
+    const hasMonthChanged = () => {
       const newMonth = new Date().getMonth();
+      return newMonth !== currentMonth || req.body.month != (currentMonth+1) || req.body.year != currentYear;
+    };
 
-      if (newMonth !== currentMonth) {
-        currentMonth = newMonth;
-        return true;
-      } else {
-        return false;
-      }
+    if (hasMonthChanged()) {
+      Data.forEach((entry) => {
+        entry.credit = entry.total;
+        entry.debit = 0;
+      });
     }
-    if (hasMonthChanged() || req.body.month) {
-      console.log("\n\n\n==============================>The month has changed!");
-    } else {
-      console.log("\n\n\n==============================>The month has not changed.");
-      // for(let i=0 ; i< Data.length ;i++){
-      //   Data[i].credit = Data[i].total;
-      //   Data[i].debit =0;
-
-      //   console.log("\n\n\ncredit============>",Data[i].credit);
-      //   console.log("\n\n\debit============>",Data[i].debit);
-      // }
-    }
-
-    console.log("\n\n\n\\nData==========>",Data);
 
     res.status(200).json({
       status: "success",
@@ -172,6 +149,7 @@ const bankGet = async (req, res) => {
     });
   }
 };
+
 
 const bankDelete = async (req, res) => {
   try {
