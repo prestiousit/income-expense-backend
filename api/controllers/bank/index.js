@@ -104,6 +104,7 @@ const bankGet = async (req, res) => {
   try {
     const month = req.body.month || moment().month() + 1;
     const year = req.body.year || moment().year();
+    
     const sql = `
       SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
       b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
@@ -122,12 +123,9 @@ const bankGet = async (req, res) => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
 
-    req.body.month = req.body.month ?? (currentMonth + 1);
-    req.body.year = req.body.year ?? currentYear;
-
     const hasMonthChanged = () => {
       const newMonth = new Date().getMonth();
-      return newMonth !== currentMonth || req.body.month != (currentMonth+1) || req.body.year != currentYear;
+      return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
     };
 
     if (hasMonthChanged()) {
