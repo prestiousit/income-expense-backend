@@ -6,7 +6,7 @@ const {
   labelcategoryTabel,
   transactionTabel,
 } = require("../../../database/tabelName");
-const { jwtTokenVerify } = require("../../../helper/methods");
+const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
 const bankCreate = async (req, res) => {
   try {
     let { banknickname, amount, user, status, bankLabel } = req.body;
@@ -120,19 +120,37 @@ const bankGet = async (req, res) => {
       ) t ON b.id = t.bank WHERE b.isDeleted = 0 AND t.bank IS NOT NULL;`;
 
     const [Data] = await db.promise().query(sql);
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    // const currentMonth = new Date().getMonth();
+    // const currentYear = new Date().getFullYear();
 
-    const hasMonthChanged = () => {
-      const newMonth = new Date().getMonth();
-      return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
-    };
+    // const hasMonthChanged = () => {
+    //   const newMonth = new Date().getMonth();
+    //   return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
+    // };
 
-    if (hasMonthChanged()) {
-      Data.forEach((entry) => {
-        entry.credit = entry.total;
-        entry.debit = 0;
-      });
+   console.log((await hasMonthChanged()).result);
+    if ((await hasMonthChanged()).result) {
+      const lastMonth = (await hasMonthChanged()).lastMonth
+      const lastYear = (await hasMonthChanged()).lastYear
+      const sql = `SELECT t.bank,SUM(CASE WHEN t.type = 'Income' THEN t.amount ELSE -t.amount END) AS credit
+      FROM transaction t
+      WHERE isDeleted = 0 AND MONTH(t.date) = ${lastMonth} AND YEAR(t.date) = ${lastYear}
+      GROUP BY t.bank;`
+
+      const [banks] = await db.promise().query(sql);
+
+      // const banksData = banks.filter((el)=> el.credit !== '0') ;
+
+      console.log(sql);
+      await Promise.all(
+        banks.map(async(el)=>{
+          console.log("\n\n\nohk")
+          const transctionQuery = `INSERT INTO ${transactionTabel} (bank,amount,type) VALUES (${el.bank},'${el.credit}','Income')`
+          await db.promise().query(transctionQuery);
+          console.log("\n\n\n\nquery=====>",transctionQuery);
+        })
+      )
+
     }
 
     res.status(200).json({
