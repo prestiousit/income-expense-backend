@@ -125,14 +125,39 @@ const bankGet = async (req, res) => {
 
     const hasMonthChanged = () => {
       const newMonth = new Date().getMonth();
-      return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
+      const newYear = new Date().getFullYear();
+      return newMonth !== currentMonth || newYear != currentYear  || month != (currentMonth+1) || year != currentYear;
     };
 
+
     if (hasMonthChanged()) {
-      Data.forEach((entry) => {
-        entry.credit = entry.total;
-        entry.debit = 0;
-      });
+
+      const query = `
+      SELECT bank,
+      SUM(CASE WHEN type = 'Income' THEN amount ELSE -amount END) AS amount,
+      SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
+      SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit,MONTH(date) as month,YEAR(date) as year
+      FROM transaction WHERE month(date) <= ${month} and year(date) = ${year} AND isDeleted = 0
+      GROUP BY bank,MONTH(date) ,YEAR(date);
+      `
+
+      const [amount] = await db.promise().query(query);
+
+      for(let k=0 ; k<Data.length ; k++){
+        for(let i=0;i<amount.length ; i++){
+          console.log("\n\n\n\nbank============>",Data[k].id , amount[i].bank );
+          if(Data[k].id === amount[i].bank){
+            if(amount[i].month == (currentMonth+1)){
+              Data[k].credit = +amount[i].amount;
+              Data[k].debit = 0;
+            }else{
+              Data[k].credit = +Data[k].credit + +amount[i].credit;
+              Data[k].debit = +amount[i].debit;
+            }
+          }
+        }
+      }
+
     }
 
     res.status(200).json({
@@ -206,6 +231,7 @@ const bankGetDropDown = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   bankCreate,
