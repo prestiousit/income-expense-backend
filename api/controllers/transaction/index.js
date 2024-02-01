@@ -150,8 +150,6 @@ const transactionGet = async (req, res) => {
     const month = req.body.month ||moment().month()+1;
     const year = req.body.year || moment().year();
 
-    console.log("body====>",req.body);
-
     const sql = `SELECT t.id, t.date, t.bank AS bankid, t.type, t.amount, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color, credit.credit AS credit, debit.debit AS debit
     FROM transaction t
     LEFT OUTER JOIN user u ON t.paidBy = u.id
@@ -159,7 +157,7 @@ const transactionGet = async (req, res) => {
     LEFT OUTER JOIN bank b ON t.bank = b.id
     LEFT OUTER JOIN (SELECT id, amount AS credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id, amount AS debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id
-    WHERE t.isDeleted = 0 AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}
+    WHERE t.isDeleted = 0 ${month == 'all' ? '' : `AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}`}
     ORDER BY t.date ASC;`
 
     const [transaction] = await db.promise().query(sql);
@@ -176,10 +174,15 @@ const transactionGet = async (req, res) => {
       total = credit - debit + total;
       return { ...el, total };
     });
+
+    const monthYearSql = `select distinct LEFT(DATE_FORMAT(date, '%M'), 3) as month,year(date)as year from transaction where isDeleted = 0;`
+
+    const [monthYearData] = await db.promise().query(monthYearSql);
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
       transaction: data,
+      monthYearData : monthYearData
     });
   } catch (error) {
     res.status(404).json({
