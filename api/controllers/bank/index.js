@@ -104,7 +104,27 @@ const bankGet = async (req, res) => {
   try {
     const month = req.body.month || moment().month() + 1;
     const year = req.body.year || moment().year();
-    
+
+    const carryForwordSelctQuery = `select id,data from bank_carry_forward where month = ${month} AND year = '${year}'`;
+    let [carryData] = await db.promise().query(carryForwordSelctQuery);
+
+    if(!carryData || carryData.length == 0){
+      const bankCarryForwordQuery = `INSERT INTO bank_carry_forward (month, year, data) VALUES (${month}, ${year}, '{}');`;
+      const [res] = await db.promise().query(bankCarryForwordQuery);
+      [carryData] = await db.promise().query(carryForwordSelctQuery)
+      console.log(carryData);
+    }
+
+    const carryForwordData = carryData && carryData[0]?.data;
+    const carryForwordid = carryData && carryData[0]?.id;
+
+    const lastMonthQuery = `select id,data from bank_carry_forward where id = ${
+      carryForwordid ? carryForwordid - 1   : 0 
+    }`;
+    const [lastMonth] = await db.promise().query(lastMonthQuery);
+
+    console.log(carryForwordData);
+
     const sql = `
       SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
       b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
@@ -113,45 +133,39 @@ const bankGet = async (req, res) => {
       LEFT JOIN labelcategory l ON b.bankLabel = l.id
       LEFT JOIN
       (
-          SELECT bank, SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
+          SELECT bank, SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit ,
               SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
-          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) <= ${year}
+          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) = ${month} AND YEAR(date) = ${year}
           GROUP BY bank
-      ) t ON b.id = t.bank WHERE b.isDeleted = 0 AND t.bank IS NOT NULL;`;
+      ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
 
     const [Data] = await db.promise().query(sql);
-    // const currentMonth = new Date().getMonth();
-    // const currentYear = new Date().getFullYear();
 
-    // const hasMonthChanged = () => {
-    //   const newMonth = new Date().getMonth();
-    //   return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
-    // };
+    const bankCarryForword = Data.map((el) => {
+      const { id, bankNickName, total } = el;
 
-   console.log((await hasMonthChanged()).result);
-    if ((await hasMonthChanged()).result) {
-      const lastMonth = (await hasMonthChanged()).lastMonth
-      const lastYear = (await hasMonthChanged()).lastYear
-      const sql = `SELECT t.bank,SUM(CASE WHEN t.type = 'Income' THEN t.amount ELSE -t.amount END) AS credit
-      FROM transaction t
-      WHERE isDeleted = 0 AND MONTH(t.date) = ${lastMonth} AND YEAR(t.date) = ${lastYear}
-      GROUP BY t.bank;`
-
-      const [banks] = await db.promise().query(sql);
-
-      // const banksData = banks.filter((el)=> el.credit !== '0') ;
-
-      console.log(sql);
-      await Promise.all(
-        banks.map(async(el)=>{
-          console.log("\n\n\nohk")
-          const transctionQuery = `INSERT INTO ${transactionTabel} (bank,amount,type) VALUES (${el.bank},'${el.credit}','Income')`
-          await db.promise().query(transctionQuery);
-          console.log("\n\n\n\nquery=====>",transctionQuery);
-        })
-      )
-
+      const carryForword = {
+        id,
+        bankNickName,
+        total,
+      };
+      return carryForword;
+    });
+    const jsonString = JSON.stringify(bankCarryForword);
+    if (carryData) {
+      const bankCarryForwordQuery = `UPDATE bank_carry_forward SET data = '${jsonString}' WhERE id = ${carryForwordid}`;
+      await db.promise().query(bankCarryForwordQuery);
+    } else {
+      const bankCarryForwordQuery = `INSERT INTO bank_carry_forward (month, year, data) VALUES (${month}, ${year}, '${jsonString}');`;
+      await db.promise().query(bankCarryForwordQuery);
     }
+
+    Data.map((el) => {
+      el.credit = 1000 + +(el.credit)
+      el.total = 1000 + +(el.total)
+    });
+
+    lastMonth.map((el)=>console.log(el))
 
     res.status(200).json({
       status: "success",
@@ -165,7 +179,6 @@ const bankGet = async (req, res) => {
     });
   }
 };
-
 
 const bankDelete = async (req, res) => {
   try {
