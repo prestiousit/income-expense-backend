@@ -123,34 +123,38 @@ const bankGet = async (req, res) => {
     // const currentMonth = new Date().getMonth();
     // const currentYear = new Date().getFullYear();
 
-    // const hasMonthChanged = () => {
-    //   const newMonth = new Date().getMonth();
-    //   return newMonth !== currentMonth || month != (currentMonth+1) || year != currentYear;
-    // };
+    const hasMonthChanged = () => {
+      const newMonth = new Date().getMonth();
+      const newYear = new Date().getFullYear();
+      return newMonth !== currentMonth || newYear != currentYear  || month != (currentMonth+1) || year != currentYear;
+    };
 
-   console.log((await hasMonthChanged()).result);
-    if ((await hasMonthChanged()).result) {
-      const lastMonth = (await hasMonthChanged()).lastMonth
-      const lastYear = (await hasMonthChanged()).lastYear
-      const sql = `SELECT t.bank,SUM(CASE WHEN t.type = 'Income' THEN t.amount ELSE -t.amount END) AS credit
-      FROM transaction t
-      WHERE isDeleted = 0 AND MONTH(t.date) = ${lastMonth} AND YEAR(t.date) = ${lastYear}
-      GROUP BY t.bank;`
 
-      const [banks] = await db.promise().query(sql);
+    if (hasMonthChanged()) {
+      const query = `
+      SELECT bank,
+      SUM(CASE WHEN type = 'Income' THEN amount ELSE -amount END) AS amount,
+      SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
+      SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit,MONTH(date) as month,YEAR(date) as year
+      FROM transaction WHERE month(date) <= ${month} and year(date) = ${year} AND isDeleted = 0
+      GROUP BY bank,MONTH(date) ,YEAR(date);
+      `
+      const [amount] = await db.promise().query(query);
 
-      // const banksData = banks.filter((el)=> el.credit !== '0') ;
-
-      console.log(sql);
-      await Promise.all(
-        banks.map(async(el)=>{
-          console.log("\n\n\nohk")
-          const transctionQuery = `INSERT INTO ${transactionTabel} (bank,amount,type) VALUES (${el.bank},'${el.credit}','Income')`
-          await db.promise().query(transctionQuery);
-          console.log("\n\n\n\nquery=====>",transctionQuery);
-        })
-      )
-
+      for(let k=0 ; k<Data.length ; k++){
+        for(let i=0;i<amount.length ; i++){
+          console.log("\n\n\n\nbank============>",Data[k].id , amount[i].bank );
+          if(Data[k].id === amount[i].bank){
+            if(amount[i].month == (currentMonth+1)){
+              Data[k].credit = +amount[i].amount;
+              Data[k].debit = 0;
+            }else{
+              Data[k].credit = +Data[k].credit + +amount[i].credit;
+              Data[k].debit = +amount[i].debit;
+            }
+          }
+        }
+      }
     }
 
     res.status(200).json({
@@ -224,6 +228,7 @@ const bankGetDropDown = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   bankCreate,
