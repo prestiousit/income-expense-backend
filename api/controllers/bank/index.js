@@ -7,6 +7,7 @@ const {
   transactionTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
+const { carryForwordGet } = require("../../../helper/carryforword");
 const bankCreate = async (req, res) => {
   try {
     let { banknickname, amount, user, status, bankLabel } = req.body;
@@ -105,25 +106,7 @@ const bankGet = async (req, res) => {
     const month = req.body.month || moment().month() + 1;
     const year = req.body.year || moment().year();
 
-    const carryForwordSelctQuery = `select id,data from bank_carry_forward where month = ${month} AND year = '${year}'`;
-    let [carryData] = await db.promise().query(carryForwordSelctQuery);
-
-    if(!carryData || carryData.length == 0){
-      const bankCarryForwordQuery = `INSERT INTO bank_carry_forward (month, year, data) VALUES (${month}, ${year}, '{}');`;
-      const [res] = await db.promise().query(bankCarryForwordQuery);
-      [carryData] = await db.promise().query(carryForwordSelctQuery)
-      console.log(carryData);
-    }
-
-    const carryForwordData = carryData && carryData[0]?.data;
-    const carryForwordid = carryData && carryData[0]?.id;
-
-    const lastMonthQuery = `select id,data from bank_carry_forward where id = ${
-      carryForwordid ? carryForwordid - 1   : 0 
-    }`;
-    const [lastMonth] = await db.promise().query(lastMonthQuery);
-
-    console.log(carryForwordData);
+    const carryForwordData = await carryForwordGet(month, year);
 
     const sql = `
       SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
@@ -133,44 +116,28 @@ const bankGet = async (req, res) => {
       LEFT JOIN labelcategory l ON b.bankLabel = l.id
       LEFT JOIN
       (
-          SELECT bank, SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit ,
-              SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
+          SELECT bank, SUM(credit) AS credit ,SUM(debit) AS debit
           FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) = ${month} AND YEAR(date) = ${year}
           GROUP BY bank
       ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
 
     const [Data] = await db.promise().query(sql);
 
-    const bankCarryForword = Data.map((el) => {
-      const { id, bankNickName, total } = el;
-
-      const carryForword = {
-        id,
-        bankNickName,
-        total,
-      };
-      return carryForword;
-    });
-    const jsonString = JSON.stringify(bankCarryForword);
-    if (carryData) {
-      const bankCarryForwordQuery = `UPDATE bank_carry_forward SET data = '${jsonString}' WhERE id = ${carryForwordid}`;
-      await db.promise().query(bankCarryForwordQuery);
-    } else {
-      const bankCarryForwordQuery = `INSERT INTO bank_carry_forward (month, year, data) VALUES (${month}, ${year}, '${jsonString}');`;
-      await db.promise().query(bankCarryForwordQuery);
+    let data = Data;
+    if (carryForwordData) {
+      for (let i = 0; i < Data.length; i++) {
+        for (let j = 0; j < carryForwordData.length; j++) {
+          if (data[i].id == carryForwordData[j].bank) {
+            data[i].credit = +carryForwordData[j].totalAmount + +data[i].credit;
+          }
+        }
+      }
     }
-
-    Data.map((el) => {
-      el.credit = 1000 + +(el.credit)
-      el.total = 1000 + +(el.total)
-    });
-
-    lastMonth.map((el)=>console.log(el))
 
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data: Data,
+      data,
     });
   } catch (error) {
     res.status(404).json({
