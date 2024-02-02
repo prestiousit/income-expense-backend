@@ -6,7 +6,9 @@ const {
   labelcategoryTabel,
   transactionTabel,
 } = require("../../../database/tabelName");
-const { jwtTokenVerify } = require("../../../helper/methods");
+const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
+const { carryForwordGet } = require("../../../helper/carryforword");
+
 const bankCreate = async (req, res) => {
   try {
     let { banknickname, amount, user, status, bankLabel } = req.body;
@@ -104,7 +106,9 @@ const bankGet = async (req, res) => {
   try {
     const month = req.body.month || moment().month() + 1;
     const year = req.body.year || moment().year();
-    
+
+    const carryForwordData = await carryForwordGet(month, year);
+
     const sql = `
       SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
       b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
@@ -113,57 +117,29 @@ const bankGet = async (req, res) => {
       LEFT JOIN labelcategory l ON b.bankLabel = l.id
       LEFT JOIN
       (
-          SELECT bank, SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
-              SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit
-          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) <= ${year}
+          SELECT bank, SUM(credit) AS credit ,SUM(debit) AS debit
+          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) = ${month} AND YEAR(date) = ${year}
           GROUP BY bank
-      ) t ON b.id = t.bank WHERE b.isDeleted = 0 AND t.bank IS NOT NULL;`;
+      ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
 
     const [Data] = await db.promise().query(sql);
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
 
-    const hasMonthChanged = () => {
-      const newMonth = new Date().getMonth();
-      const newYear = new Date().getFullYear();
-      return newMonth !== currentMonth || newYear != currentYear  || month != (currentMonth+1) || year != currentYear;
-    };
-
-
-    if (hasMonthChanged()) {
-
-      const query = `
-      SELECT bank,
-      SUM(CASE WHEN type = 'Income' THEN amount ELSE -amount END) AS amount,
-      SUM(CASE WHEN type = 'Income' THEN amount ELSE 0 END) AS credit,
-      SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) AS debit,MONTH(date) as month,YEAR(date) as year
-      FROM transaction WHERE month(date) <= ${month} and year(date) = ${year} AND isDeleted = 0
-      GROUP BY bank,MONTH(date) ,YEAR(date);
-      `
-
-      const [amount] = await db.promise().query(query);
-
-      for(let k=0 ; k<Data.length ; k++){
-        for(let i=0;i<amount.length ; i++){
-          console.log("\n\n\n\nbank============>",Data[k].id , amount[i].bank );
-          if(Data[k].id === amount[i].bank){
-            if(amount[i].month == (currentMonth+1)){
-              Data[k].credit = +amount[i].amount;
-              Data[k].debit = 0;
-            }else{
-              Data[k].credit = +Data[k].credit + +amount[i].credit;
-              Data[k].debit = +amount[i].debit;
-            }
+    let data = Data;
+    if (carryForwordData) {
+      for (let i = 0; i < Data.length; i++) {
+        for (let j = 0; j < carryForwordData.length; j++) {
+          if (data[i].id == carryForwordData[j].bank) {
+            data[i].credit = +carryForwordData[j].totalAmount + +data[i].credit;
+            data[i].total = data[i].credit - +data[i].debit;
           }
         }
       }
-
     }
 
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
-      data: Data,
+      data,
     });
   } catch (error) {
     res.status(404).json({
@@ -172,6 +148,7 @@ const bankGet = async (req, res) => {
     });
   }
 };
+
 
 
 const bankDelete = async (req, res) => {
