@@ -11,7 +11,21 @@ const { carryForwordGet } = require("../../../helper/carryforword");
 
 const bankCreate = async (req, res) => {
   try {
-    let { banknickname, amount, user, status, bankLabel } = req.body;
+    // let { banknickname, amount, user, status, bankLabel,color, } = req.body;
+    let {accountno,
+      amount,
+      bankbranch,
+      bankname,
+      banknickname,
+      color,
+      credit,
+      debit,
+      description,
+      ifsc_code,
+      mobileNo,
+      status,
+      total,
+      user}= req.body;
 
     if (!user) {
       throw new Error("User is Required..!");
@@ -38,9 +52,10 @@ const bankCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .join(", ");
 
+    console.log("query===>", req.body)
     const sql = `INSERT INTO ${bankTabel}
-      (${keys})
-       VALUES (${keyvalues})`;
+      (user, bankname, banknickname, accountno, ifsc_code, mobileNo, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
+       VALUES (${user}, ${bankname}, ${banknickname}, ${accountno}, ${ifsc_code}, ${mobileNo}, ${bankbranch}, ${amount}, ${description}, ${color}, ${req.body.status}, ${req.body.isDeleted}, ${req.body.createdBy}, ${req.body.createdAt})`;
 
     console.log("query===>", sql);
     const [bank] = await db.promise().query(sql);
@@ -48,9 +63,10 @@ const bankCreate = async (req, res) => {
       bankLabel = "null";
     }
 
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,paymentStatus,date) VALUES (${
-      bank.insertId
-    },${user},${amount},${bankLabel},"Income","Paid",'${moment().toISOString()}')`;
+    console.log("bank====",bank);
+
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,transactionLabel,type,paymentStatus,date) VALUES (${
+      bank.insertId},${user},${amount},${bankLabel},"Income","Paid",'${moment().toISOString()}')`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
@@ -58,7 +74,7 @@ const bankCreate = async (req, res) => {
       status: "sucess",
       message: "bank Inserted successfully",
       data: bank,
-      // transaction: transaction,
+      transaction: transaction,
     });
   } catch (error) {
     res.status(404).json({
@@ -109,37 +125,66 @@ const bankGet = async (req, res) => {
 
     const carryForwordData = await carryForwordGet(month, year);
 
-    const sql = `
-      SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
-      b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
-      FROM bank b
-      LEFT JOIN user u ON b.user = u.id
-      LEFT JOIN labelcategory l ON b.bankLabel = l.id
-      LEFT JOIN
-      (
-          SELECT bank, SUM(credit) AS credit ,SUM(debit) AS debit
-          FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) = ${month} AND YEAR(date) = ${year}
-          GROUP BY bank
-      ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
+    // const sql = `
+    //   SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
+    //   b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
+    //   FROM bank b
+    //   LEFT JOIN user u ON b.user = u.id
+    //   LEFT JOIN labelcategory l ON b.bankLabel = l.id
+    //   LEFT JOIN
+    //   (
+    //       SELECT bank, SUM(credit) AS credit ,SUM(debit) AS debit
+    //       FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) <= ${year}
+    //       GROUP BY bank
+    //   ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
 
+    const sql = `
+    SELECT  b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color,
+    COALESCE(SUM(t.credit), 0) AS credit,COALESCE(SUM(t.debit), 0) AS debit,COALESCE(SUM(t.credit - t.debit), 0) AS total
+    FROM bank b
+    LEFT JOIN transaction t ON t.bank = b.id 
+    LEFT JOIN user u ON b.user = u.id
+    LEFT JOIN labelcategory l ON b.bankLabel = l.id 
+    WHERE MONTH(t.date) <= ${month} AND YEAR(t.date) <= ${year}
+    GROUP BY b.id;`;
+    
     const [Data] = await db.promise().query(sql);
 
+    const query = `
+    select b.id,COALESCE(SUM(t.credit), 0) AS credit,COALESCE(SUM(t.debit), 0) AS debit,COALESCE(SUM(t.credit - t.debit), 0) AS total
+    from  transaction t
+    left join bank b on b.id = t.bank
+    WHERE MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} group by bank
+    `
+    const [currentData] = await db.promise().query(query);
+
+    console.log("\n\n\n\n\nData=========>",Data);
+    console.log("\n\n\n\n\currentData=========>",carryForwordData);
+
     let data = Data;
-    if (carryForwordData) {
-      for (let i = 0; i < Data.length; i++) {
-        for (let j = 0; j < carryForwordData.length; j++) {
-          if (data[i].id == carryForwordData[j].bank) {
-            data[i].credit = +carryForwordData[j].totalAmount + +data[i].credit;
-            data[i].total = data[i].credit - +data[i].debit;
-          }
-        }
-      }
-    }
+
+    // if (carryForwordData) {
+    //   for (let i = 0; i < Data.length; i++) {
+    //     for (let j = 0; j <= carryForwordData.length; j++) {
+    //       let carryForword = carryForwordData[j].split(":"); 
+    //       if (data[i].id == carryForword[0]) {
+    //         let currentCredit = currentData.length !=0 ? currentData[i].credit : 0;
+    //         let currentDebit = currentData.length !=0 ? currentData[i].debit : 0;
+    //         console.log("\n\n\n\ndata[i].credit====",+data[i].credit,+data[i].debit);
+    //         console.log("\n\n\n\ncarryforward====",carryForwordData[j]);
+    //         console.log("\n\n\n\n,+currentCredit=>",+currentCredit)
+    //         data[i].credit = +carryForword[1] + +currentCredit;
+    //         data[i].debit = +currentDebit;
+    //       }
+    //     }
+    //   }
+    // }
+
 
     res.status(200).json({
       status: "success",
-      message: "get all data of bank",
-      data,
+      message: "get adata of bank",
+      data ,
     });
   } catch (error) {
     res.status(404).json({
