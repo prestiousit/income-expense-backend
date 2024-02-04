@@ -208,11 +208,19 @@ const transactionGet = async (req, res) => {
 
     const [monthYearData] = await db.promise().query(monthYearSql);
 
+    const monthSql = `select distinct month(date) as value , LEFT(DATE_FORMAT(date, '%M'), 3) AS label from ${transactionTabel}`;
+    const [monthData] = await db.promise().query(monthSql);
+
+    const yearSql = `select distinct year(date) as value , year(date) AS label from ${transactionTabel}`;
+    const [yearData] = await db.promise().query(yearSql);
+
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
       transaction: data,
-      monthYearData
+      monthYearData,
+      monthData,
+      yearData
     });
   } catch (error) {
     res.status(404).json({

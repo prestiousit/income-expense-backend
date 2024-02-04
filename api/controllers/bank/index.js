@@ -25,7 +25,8 @@ const bankCreate = async (req, res) => {
       mobileNo,
       status,
       total,
-      user}= req.body;
+      user,
+    bankLabel}= req.body;
 
     if (!user) {
       throw new Error("User is Required..!");
@@ -55,7 +56,7 @@ const bankCreate = async (req, res) => {
     console.log("query===>", req.body)
     const sql = `INSERT INTO ${bankTabel}
       (user, bankname, banknickname, accountno, ifsc_code, mobileNo, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
-       VALUES (${user}, ${bankname}, ${banknickname}, ${accountno}, ${ifsc_code}, ${mobileNo}, ${bankbranch}, ${amount}, ${description}, ${color}, ${req.body.status}, ${req.body.isDeleted}, ${req.body.createdBy}, ${req.body.createdAt})`;
+       VALUES (${user}, '${bankname}', '${banknickname}', '${accountno}', '${ifsc_code}', '${mobileNo}', '${bankbranch}', ${amount}, '${description}',' ${color}', '${req.body.status}', ${req.body.isDeleted}, ${req.body.createdBy}, '${req.body.createdAt}')`;
 
     console.log("query===>", sql);
     const [bank] = await db.promise().query(sql);
@@ -139,8 +140,7 @@ const bankGet = async (req, res) => {
     //   ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
 
     const sql = `
-    SELECT  b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color,
-    COALESCE(SUM(t.credit), 0) AS credit,COALESCE(SUM(t.debit), 0) AS debit,COALESCE(SUM(t.credit - t.debit), 0) AS total
+    SELECT  b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color
     FROM bank b
     LEFT JOIN transaction t ON t.bank = b.id 
     LEFT JOIN user u ON b.user = u.id
@@ -150,41 +150,38 @@ const bankGet = async (req, res) => {
     
     const [Data] = await db.promise().query(sql);
 
-    const query = `
-    select b.id,COALESCE(SUM(t.credit), 0) AS credit,COALESCE(SUM(t.debit), 0) AS debit,COALESCE(SUM(t.credit - t.debit), 0) AS total
-    from  transaction t
-    left join bank b on b.id = t.bank
-    WHERE MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} group by bank
-    `
-    const [currentData] = await db.promise().query(query);
+    const bankCarrySql = `
+    select * from bank_carry_forward where month = ${month} AND year= ${year}
+    `;
 
-    console.log("\n\n\n\n\nData=========>",Data);
-    console.log("\n\n\n\n\currentData=========>",carryForwordData);
+    let [bankCarryData] = await db.promise().query(bankCarrySql);
 
-    let data = Data;
+    bankCarryData = carryForwordData[0].data;
 
-    // if (carryForwordData) {
-    //   for (let i = 0; i < Data.length; i++) {
-    //     for (let j = 0; j <= carryForwordData.length; j++) {
-    //       let carryForword = carryForwordData[j].split(":"); 
-    //       if (data[i].id == carryForword[0]) {
-    //         let currentCredit = currentData.length !=0 ? currentData[i].credit : 0;
-    //         let currentDebit = currentData.length !=0 ? currentData[i].debit : 0;
-    //         console.log("\n\n\n\ndata[i].credit====",+data[i].credit,+data[i].debit);
-    //         console.log("\n\n\n\ncarryforward====",carryForwordData[j]);
-    //         console.log("\n\n\n\n,+currentCredit=>",+currentCredit)
-    //         data[i].credit = +carryForword[1] + +currentCredit;
-    //         data[i].debit = +currentDebit;
-    //       }
-    //     }
-    //   }
-    // }
+    Data.forEach((dataObject) => {
+      const bankId = dataObject.id.toString();
+    
+      const correspondingBankCarryData = bankCarryData.find(entry => entry.hasOwnProperty(bankId));
+    
+      if (correspondingBankCarryData) {
+        const { credit, debit } = correspondingBankCarryData[bankId];
+        dataObject.credit = credit;
+        dataObject.debit = debit;
+        dataObject.total = credit - debit;
+      } else {
+        dataObject.credit = 0;
+        dataObject.debit = 0;
+        dataObject.total = 0;
+      }
+    });
+    
 
-
+    console.log(Data);
+      
     res.status(200).json({
       status: "success",
       message: "get adata of bank",
-      data ,
+      data : Data ,
     });
   } catch (error) {
     res.status(404).json({
