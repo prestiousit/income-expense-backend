@@ -154,9 +154,9 @@ const bankGet = async (req, res) => {
     select * from bank_carry_forward where month = ${month} AND year= ${year}
     `;
 
-    let [bankCarryData] = await db.promise().query(bankCarrySql);
+    let [bankCarryData1] = await db.promise().query(bankCarrySql);
 
-    bankCarryData = carryForwordData[0].data;
+    let bankCarryData = carryForwordData[0].data;
 
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
@@ -164,14 +164,19 @@ const bankGet = async (req, res) => {
       const correspondingBankCarryData = bankCarryData.find(entry => entry.hasOwnProperty(bankId));
     
       if (correspondingBankCarryData) {
-        const { credit, debit } = correspondingBankCarryData[bankId];
+        const { credit, debit, total } = correspondingBankCarryData[bankId];
         dataObject.credit = credit;
         dataObject.debit = debit;
-        dataObject.total = credit - debit;
+        dataObject.total = total;
       } else {
         dataObject.credit = 0;
         dataObject.debit = 0;
         dataObject.total = 0;
+      }
+
+      if(bankCarryData1.length == 0){
+        dataObject.credit = dataObject.total;
+        dataObject.debit = 0;
       }
     });
     

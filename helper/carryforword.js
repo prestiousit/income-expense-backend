@@ -7,11 +7,17 @@ async function bankCarryForword(date) {
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
-  const transactionSelectQuery = `SELECT t.bank , coalesce(SUM(credit),0) as credit,coalesce(SUM(debit),0) as debit
-    FROM ${transactionTabel} t
-    LEFT JOIN ${bankTabel} b ON b.id = t.bank
-    WHERE t.isDeleted = 0 AND MONTH(t.date) <= ${month} AND YEAR(t.date) <= ${year}
-    GROUP BY t.bank, b.bankNickName;`;
+  const transactionSelectQuery = `
+  SELECT t.bank,
+  COALESCE(SUM(CASE WHEN MONTH(t.date) < ${month} AND YEAR(t.date) <= ${year} THEN credit ELSE 0 END), 0) AS total_credit,
+  COALESCE(SUM(CASE WHEN MONTH(t.date) < ${month} AND YEAR(t.date) <= ${year} THEN debit ELSE 0 END), 0) AS total_debit,
+  COALESCE(SUM(CASE WHEN MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} THEN credit ELSE 0 END), 0) AS credit,
+  COALESCE(SUM(CASE WHEN MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} THEN debit ELSE 0 END), 0) AS debit
+  FROM ${transactionTabel} t
+  LEFT JOIN ${bankTabel} b ON b.id = t.bank
+  WHERE t.isDeleted = 0 AND YEAR(t.date) <= ${year}
+  GROUP BY t.bank, b.bankNickName;
+`;
 
   let [transactionData] = await db.promise().query(transactionSelectQuery);
 
@@ -24,8 +30,9 @@ async function bankCarryForword(date) {
 
   const opdata = transactionData.map((el) => {
     let opbank = {
-      "credit": el.credit || 0,
-      "debit": el.debit || 0
+      "credit": (+el.total_credit - +el.total_debit)+ +el.credit || 0,
+      "debit": +el.debit || 0,
+      "total": (+el.total_credit - +el.total_debit)+(+el.credit - +el.debit) || 0
     };
 
     let op = {};
@@ -34,9 +41,11 @@ async function bankCarryForword(date) {
     return op;
   });
 
+  console.log("\n\n\n\n\ntransactionData==========>", transactionData);
+
 
   const data = JSON.stringify(opdata);
-  console.log("\n\n\n\n\ntransactionData==========>", data);
+  console.log("\n\n\n\n\nopdata==========>", data);
 
   if (!findCarryData.length) {
     const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${data}');`;
@@ -51,23 +60,30 @@ async function bankCarryForword(date) {
     console.log("\n\n\n\ngetMonthsData=======", getMonthsData);
     for (let i = 0; i < getMonthsData.length; i++) {
 
-      const transactionSelectQuery = `SELECT t.bank , coalesce(SUM(credit),0) as credit,coalesce(SUM(debit),0) as debit
-        FROM ${transactionTabel} t
-        LEFT JOIN ${bankTabel} b ON b.id = t.bank
-        WHERE t.isDeleted = 0 AND MONTH(t.date) <= ${getMonthsData[i].month} AND YEAR(t.date) <= ${getMonthsData[i].year}
-        GROUP BY t.bank, b.bankNickName;`;
-
+      const transactionSelectQuery = `
+      SELECT t.bank,
+      COALESCE(SUM(CASE WHEN MONTH(t.date) < ${getMonthsData[i].month} AND YEAR(t.date) <= ${getMonthsData[i].year} THEN credit ELSE 0 END), 0) AS total_credit,
+      COALESCE(SUM(CASE WHEN MONTH(t.date) < ${getMonthsData[i].month} AND YEAR(t.date) <= ${getMonthsData[i].year} THEN debit ELSE 0 END), 0) AS total_debit,
+      COALESCE(SUM(CASE WHEN MONTH(t.date) = ${getMonthsData[i].month} AND YEAR(t.date) = ${getMonthsData[i].year} THEN credit ELSE 0 END), 0) AS credit,
+      COALESCE(SUM(CASE WHEN MONTH(t.date) = ${getMonthsData[i].month} AND YEAR(t.date) = ${getMonthsData[i].year} THEN debit ELSE 0 END), 0) AS debit
+      FROM ${transactionTabel} t
+      LEFT JOIN ${bankTabel} b ON b.id = t.bank
+      WHERE t.isDeleted = 0 AND YEAR(t.date) <= ${getMonthsData[i].year}
+      GROUP BY t.bank, b.bankNickName;
+    `;
+    
       let [transactionData] = await db.promise().query(transactionSelectQuery);
 
       const opdata = transactionData.map((el) => {
         let opbank = {
-          "credit": el.credit || 0,
-          "debit": el.debit || 0
+          "credit": (+el.total_credit - +el.total_debit)+ +el.credit || 0,
+          "debit": +el.debit || 0,
+          "total": (+el.total_credit - +el.total_debit)+(+el.credit - +el.debit) || 0
         };
-
+    
         let op = {};
         op[el.bank] = opbank;
-
+    
         return op;
       });
 
