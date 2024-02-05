@@ -47,9 +47,9 @@ const bankCreate = async (req, res) => {
       bankLabel = "null";
     }
 
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , amount ,transactionLabel,type,paymentStatus,date) VALUES (${
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date) VALUES (${
       bank.insertId
-    },${user},${amount},${bankLabel},"Income","Paid",'${moment().toISOString()}')`;
+    },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}')`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
@@ -129,6 +129,7 @@ const bankGet = async (req, res) => {
         for (let j = 0; j < carryForwordData.length; j++) {
           if (data[i].id == carryForwordData[j].bank) {
             data[i].credit = +carryForwordData[j].totalAmount + +data[i].credit;
+            // data[i].total = +carryForwordData[j].totalAmount + +data[i].total;
           }
         }
       }

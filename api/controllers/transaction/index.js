@@ -7,11 +7,9 @@ const {
   bankTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
-const bankCarryForword = require("../../../helper/carryforword");
-
+const { bankCarryForword } = require("../../../helper/carryforword");
 const transactionCreate = async (req, res) => {
   try {
-
     const tokenData = await jwtTokenVerify(req.headers.token);
     let {
       date,
@@ -29,15 +27,23 @@ const transactionCreate = async (req, res) => {
       if (!amount || !paidBy) {
         throw new Error("Amount or Paid Persone Required..!");
       }
-      const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status,createdAt,createdBy )
-                   VALUES ('${bank}' , 0 ,${paidBy},0,'active','${moment().toISOString()}',${
-        tokenData.id
-      })`;
-      const [data] = await db.promise().query(sql);
-      bank = data.insertId;
+
+      const findNickName = `select * from bank where bankNickName = '${bank}'`;
+      const [findNickNameData] = await db.promise().query(findNickName);
+
+      if (!findNickNameData[0]) {
+        const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status,createdAt,createdBy )
+        VALUES ('${bank}' , 0 ,${paidBy},0,'active','${moment().toISOString()}',${
+          tokenData.id
+        })`;
+        const [data] = await db.promise().query(sql);
+        bank = data.insertId;
+      }else{
+        bank = findNickNameData[0].id
+      }
     }
-    if(!transactionLabel){
-      transactionLabel = null
+    if (!transactionLabel) {
+      transactionLabel = null;
     }
     if (!type) {
       type = "Income";
@@ -93,7 +99,6 @@ const transactionCreate = async (req, res) => {
     await db.promise().query(updateBankQuery);
 
     bankCarryForword(req.body.date);
-
 
     res.status(201).json({
       status: "sucess",
@@ -154,7 +159,7 @@ const transactionUpdate = async (req, res) => {
     }
 
     let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
-    query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, '');
+    query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
     const [updatedTransaction] = await db.promise().query(query);
 
     const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
@@ -176,7 +181,7 @@ const transactionUpdate = async (req, res) => {
 
 const transactionGet = async (req, res) => {
   try {
-    const month = req.body.month ||moment().month()+1;
+    const month = req.body.month || moment().month() + 1;
     const year = req.body.year || moment().year();
 
     const sql = `SELECT t.id, t.date,t.debit,t.credit,t.type, t.bank AS bankid, t.description, u.name, t.paidBy AS userid, b.bankNickName, t.paymentStatus, t.transactionLabel AS labelid, l.name AS label, t.color
@@ -184,7 +189,11 @@ const transactionGet = async (req, res) => {
     LEFT OUTER JOIN user u ON t.paidBy = u.id
     LEFT OUTER JOIN labelcategory l ON t.transactionLabel = l.id
     LEFT OUTER JOIN bank b ON t.bank = b.id
-    WHERE t.isDeleted = 0 ${month == 'all' ? '' : `AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}`} 
+    WHERE t.isDeleted = 0 ${
+      month == "all"
+        ? ""
+        : `AND MONTH(t.date) = ${month} AND YEAR(t.date) = ${year}`
+    } 
     ORDER BY t.date ASC;`;
 
     const [transaction] = await db.promise().query(sql);
@@ -203,13 +212,13 @@ const transactionGet = async (req, res) => {
     });
     const monthYearSql = `SELECT DISTINCT LEFT(DATE_FORMAT(date, '%M'), 3) AS month, YEAR(date) AS year FROM transaction
     WHERE isDeleted = 0 
-    ORDER BY year ASC, FIELD(month, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')`
+    ORDER BY year ASC, FIELD(month, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')`;
     const [monthYearData] = await db.promise().query(monthYearSql);
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
       transaction: data,
-      monthYearData
+      monthYearData,
     });
   } catch (error) {
     res.status(404).json({
@@ -231,8 +240,8 @@ const transactionDelete = async (req, res) => {
     const query_bank = `
     SELECT t.id,t.bank,COALESCE(credit.credit, 0) as credit, COALESCE(debit.debit, 0) as debit
     FROM transaction t
-    LEFT OUTER JOIN (SELECT id,amount as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
-    LEFT OUTER JOIN (SELECT id,amount as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.id=${transactionId} AND paymentStatus = 'Paid'`;
+    LEFT OUTER JOIN (SELECT id,credit as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
+    LEFT OUTER JOIN (SELECT id,debit as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.id=${transactionId} AND paymentStatus = 'Paid'`;
     const [bankdata] = await db.promise().query(query_bank);
     const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
       tokenData.id
