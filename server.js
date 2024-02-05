@@ -27,8 +27,7 @@ exports.start_server = async () => {
     app.use(cors());
     app.use("/api", apiRoutes);
     app.get("/health", async function (req, res) {
-      await db.promise().query(`TRUNCATE TABLE transaction`);
-      await db.promise().query(`TRUNCATE TABLE bank`);
+
       return res.send("Ok, Working fine.");
     });
 

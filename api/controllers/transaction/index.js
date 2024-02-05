@@ -8,6 +8,7 @@ const {
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
 const { bankCarryForword } = require("../../../helper/carryforword");
+
 const transactionCreate = async (req, res) => {
   try {
     const tokenData = await jwtTokenVerify(req.headers.token);
@@ -38,8 +39,8 @@ const transactionCreate = async (req, res) => {
         })`;
         const [data] = await db.promise().query(sql);
         bank = data.insertId;
-      }else{
-        bank = findNickNameData[0].id
+      } else {
+        bank = findNickNameData[0].id;
       }
     }
     if (!transactionLabel) {
@@ -210,10 +211,18 @@ const transactionGet = async (req, res) => {
       total = credit - debit + total;
       return { ...el, total };
     });
+
     const monthYearSql = `SELECT DISTINCT LEFT(DATE_FORMAT(date, '%M'), 3) AS month, YEAR(date) AS year FROM transaction
     WHERE isDeleted = 0 
     ORDER BY year ASC, FIELD(month, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')`;
     const [monthYearData] = await db.promise().query(monthYearSql);
+
+    const monthSql = `select distinct month(date) as value , LEFT(DATE_FORMAT(date, '%M'), 3) AS label from ${transactionTabel}`;
+    const [monthData] = await db.promise().query(monthSql);
+
+    const yearSql = `select distinct year(date) as value , year(date) AS label from ${transactionTabel}`;
+    const [yearData] = await db.promise().query(yearSql);
+
     res.status(200).json({
       status: "success",
       message: "get all data of bank",
