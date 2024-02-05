@@ -145,10 +145,12 @@ const bankGet = async (req, res) => {
     LEFT JOIN transaction t ON t.bank = b.id 
     LEFT JOIN user u ON b.user = u.id
     LEFT JOIN labelcategory l ON b.bankLabel = l.id 
-    WHERE MONTH(t.date) <= ${month} AND YEAR(t.date) <= ${year} AND b.isDeleted = 0
+    WHERE (YEAR(t.date) < ${year}) OR (YEAR(t.date) = ${year} AND MONTH(t.date) <= ${month}) OR t.date IS NULL
+      AND b.isDeleted = 0
     GROUP BY b.id;`;
 
     const [Data] = await db.promise().query(sql);
+
 
     const bankCarrySql = `
     select * from bank_carry_forward where month = ${month} AND year= ${year}
@@ -177,11 +179,14 @@ const bankGet = async (req, res) => {
         dataObject.total = +dataObject.amount;
       }
 
+
       // if (bankCarryData1.length == 0) {
       //   dataObject.credit = +dataObject.amount;
       //   dataObject.debit = 0;
       // }
     });
+
+    
 
     res.status(200).json({
       status: "success",
