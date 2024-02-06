@@ -49,14 +49,15 @@ async function bankCarryForword(date) {
 
   if (!findCarryData.length) {
     const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${data}');`;
-    await db.promise().query(insertCarry);
+    const insertData = await db.promise().query(insertCarry);
 
-    // monthupdate(month,year);
+    console.log("\n\n\ninsertData===",insertData);
+    monthupdate(month,year,insertData.insertId);
   } else {
     const updateCarry = `UPDATE bank_carry_forward SET data = '${data}' where id=${findCarryData[0].id};`;
     await db.promise().query(updateCarry);
 
-    monthupdate(month,year);
+    monthupdate(month,year,findCarryData[0].id)    
   }
 }
 
@@ -82,7 +83,11 @@ async function carryForwordGet(month, year) {
   }
 }
 
-async function monthupdate(month,year){
+async function monthupdate(month,year,id){
+  const updatingQuery = `select * from bank_carry_forward WHERE id = ${id}`;
+  const [updatingData] = await db.promise().query(updatingQuery);
+
+  console.log("\n\nUpdating",updatingData);
   const getMonthsSql = `select * from bank_carry_forward WHERE (year > ${year}) OR (year = ${year} AND month > ${month})`;
     const [getMonthsData] = await db.promise().query(getMonthsSql);
 
@@ -91,10 +96,10 @@ async function monthupdate(month,year){
 
     const getCarry = `select * from bank_carry_forward where month = ${getMonthsData[i].month} and year = ${getMonthsData[i].year}`;
 
-    let getCarryData = await db.promise().query(getCarry);
+    let [getCarryData] = await db.promise().query(getCarry);
 
 
-    console.log("\n\n\ngetCarryData data in month function === " , getCarryData);
+    console.log("\n\n\ngetCarryData data in month function === " , getCarryData[0].data , getMonthsData[i].month);
 
       // const opdata = transactionData.map((el) => {
       //   let opbank = {
