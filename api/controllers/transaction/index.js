@@ -86,20 +86,23 @@ const transactionCreate = async (req, res) => {
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     const [transaction] = await db.promise().query(query);
 
-    const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bank}`;
-    const [data] = await db.promise().query(selectQuery);
+    if(paymentStatus == 'Paid'){
+      const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bank}`;
+      const [data] = await db.promise().query(selectQuery);
 
-    let currentAmount = +data[0].amount;
-    if (type === "Income") {
-      currentAmount += amount;
-    } else if (type === "Expense") {
-      currentAmount -= amount;
+      let currentAmount = +data[0].amount;
+      if (type === "Income") {
+        currentAmount += amount;
+      } else if (type === "Expense") {
+        currentAmount -= amount;
+      }
+
+      const updateBankQuery = `UPDATE ${bankTabel} SET amount = ${currentAmount} WHERE id = ${bank}`;
+      await db.promise().query(updateBankQuery);
+      
+      bankCarryForword(req.body.date);
     }
 
-    const updateBankQuery = `UPDATE ${bankTabel} SET amount = ${currentAmount} WHERE id = ${bank}`;
-    await db.promise().query(updateBankQuery);
-
-    bankCarryForword(req.body.date);
 
     res.status(201).json({
       status: "sucess",
