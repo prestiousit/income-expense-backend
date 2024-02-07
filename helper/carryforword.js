@@ -2,62 +2,111 @@ const moment = require("moment");
 const db = require("../config/database");
 const { transactionTabel, bankTabel } = require("../database/tabelName");
 
-async function bankCarryForword(date) {
-
+async function bankCarryForword(date, transcationId) {
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
-  const transactionSelectQuery = `
-  SELECT t.bank,
-  COALESCE(SUM(CASE WHEN MONTH(t.date) < ${month} AND YEAR(t.date) <= ${year} THEN credit ELSE 0 END), 0) AS total_credit,
-  COALESCE(SUM(CASE WHEN MONTH(t.date) < ${month} AND YEAR(t.date) <= ${year} THEN debit ELSE 0 END), 0) AS total_debit,
-  COALESCE(SUM(CASE WHEN MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} THEN credit ELSE 0 END), 0) AS credit,
-  COALESCE(SUM(CASE WHEN MONTH(t.date) = ${month} AND YEAR(t.date) = ${year} THEN debit ELSE 0 END), 0) AS debit
-  FROM ${transactionTabel} t
-  LEFT JOIN ${bankTabel} b ON b.id = t.bank
-  WHERE t.isDeleted = 0 AND YEAR(t.date) <= ${year} AND paymentStatus = 'Paid'
-  GROUP BY t.bank, b.bankNickName;
-`;
-
+  const transactionSelectQuery = `select date,bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
   let [transactionData] = await db.promise().query(transactionSelectQuery);
 
+  const curretMonth = `select * from bank_carry_forward where month=${month} AND year=${year}`;
+  const [curretMonthData] = await db.promise().query(curretMonth);
 
-  const findCarryQuery = `select * from bank_carry_forward where month=${month} AND year=${year}`;
-  const [findCarryData] = await db.promise().query(findCarryQuery);
-
-  // const findBankFromCarry = `select * from bank_carry where month=${month - 1} AND year=${year - 1}`
-  // const [findBankFromCarryData] = await db.promise().query(findBankFromCarry);
-
-  const opdata = transactionData.map((el) => {
-    let opbank = {
-      "credit": (+el.total_credit - +el.total_debit)+ +el.credit || 0,
-      "debit": +el.debit || 0,
-      "total": (+el.total_credit - +el.total_debit)+(+el.credit - +el.debit) || 0
-    };
-
-    let op = {};
-    op[el.bank] = opbank;
-
-    return op;
-  });
-
-  console.log("\n\n\n\n\ntransactionData==========>", transactionData);
-
-
-  const data = JSON.stringify(opdata);
-  console.log("\n\n\n\n\nopdata==========>", data);
-
-  if (!findCarryData.length) {
-    const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${data}');`;
-    const insertData = await db.promise().query(insertCarry);
-
-    console.log("\n\n\ninsertData===",insertData);
-    monthupdate(month,year,insertData.insertId);
+  let queryMonth = month;
+  let queryYear = year;
+  if (queryMonth === 1) {
+    queryMonth = 12;
+    queryYear -= 1;
   } else {
-    const updateCarry = `UPDATE bank_carry_forward SET data = '${data}' where id=${findCarryData[0].id};`;
-    await db.promise().query(updateCarry);
+    queryMonth -= 1;
+  }
+  const lastMonth = `select data from bank_carry_forward where month = ${queryMonth} and year = ${queryYear}`;
+  const [lastMonthData] = await db.promise().query(lastMonth);
 
-    monthupdate(month,year,findCarryData[0].id)    
+  const { bank, credit, debit } = transactionData[0];
+  if (!curretMonthData.length) {
+    if (!lastMonthData.length) {
+      const data = [];
+      const Insert = {
+        bank: +bank,
+        credit: +credit,
+        debit: +debit,
+        total: +credit - +debit,
+      };
+      data.push(Insert);
+      const newData = JSON.stringify(data);
+
+      const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${newData}');`;
+      await db.promise().query(insertCarry);
+    } else {
+      const selectBank = lastMonthData[0].data.find((el) => el.bank === bank);
+      if (selectBank) {
+        const selectDataIndex = lastMonthData[0].data.indexOf(selectBank);
+        lastMonthData[0].data.splice(selectDataIndex, 1);
+        const selectDataRemove = lastMonthData[0].data;
+
+        const Insert = {
+          bank: +bank,
+          credit: +selectBank.credit + +credit,
+          debit: +selectBank.debit + +debit,
+          total: +selectBank.total + (+credit - +debit),
+        };
+        selectDataRemove.push(Insert);
+        const newData = JSON.stringify(selectDataRemove);
+
+        const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${newData}');`;
+        await db.promise().query(insertCarry);
+      } else {
+        let data = [...lastMonthData[0].data];
+        const Insert = {
+          bank: +bank,
+          credit: +credit,
+          debit: +debit,
+          total: +credit - +debit,
+        };
+        data.push(Insert);
+        const newData = JSON.stringify(data);
+
+        const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${newData}');`;
+        await db.promise().query(insertCarry);
+      }
+    }
+  } else {
+    const selectBank = curretMonthData[0].data.find((el) => el.bank === bank);
+    let newData;
+    if (selectBank) {
+      const selectDataIndex = curretMonthData[0].data.indexOf(selectBank);
+      curretMonthData[0].data.splice(selectDataIndex, 1);
+      const selectDataRemove = curretMonthData[0].data;
+
+      let data = [...selectDataRemove];
+
+      const Insert = {
+        bank: +bank,
+        credit: +selectBank.credit + +credit,
+        debit: +selectBank.debit + +debit,
+        total: +selectBank.total + (+credit - +debit),
+      };
+
+      data.push(Insert);
+      newData = JSON.stringify(data);
+
+      monthFrowerd(date, +credit, +debit, curretMonthData[0].id);
+    } else {
+      let data = [...curretMonthData[0].data];
+
+      const Insert = {
+        bank: +bank,
+        credit: +credit,
+        debit: +debit,
+        total: +credit - +debit,
+      };
+
+      data.push(Insert);
+      newData = JSON.stringify(data);
+    }
+    const updateQuery = `UPDATE bank_carry_forward SET data = '${newData}' where id=${curretMonthData[0].id};`;
+    await db.promise().query(updateQuery);
   }
 }
 
@@ -72,7 +121,6 @@ async function carryForwordGet(month, year) {
 
   try {
     const [findCarryData] = await db.promise().query(findCarryQuery);
-
     const bankData = findCarryData ? findCarryData : [];
 
     console.log("\n\n\nbankData========", bankData);
@@ -83,43 +131,39 @@ async function carryForwordGet(month, year) {
   }
 }
 
-async function monthupdate(month,year,id){
-  const updatingQuery = `select * from bank_carry_forward WHERE id = ${id}`;
-  const [updatingData] = await db.promise().query(updatingQuery);
+async function monthFrowerd(date, credit, debit, bankId) {
+  let month = moment(date || moment().toISOString()).month() + 1;
+  let year = moment(date || moment().toISOString()).year();
 
-  console.log("\n\nUpdating",updatingData);
   const getMonthsSql = `select * from bank_carry_forward WHERE (year > ${year}) OR (year = ${year} AND month > ${month})`;
-    const [getMonthsData] = await db.promise().query(getMonthsSql);
+  const [getMonthsData] = await db.promise().query(getMonthsSql);
 
-    console.log("\n\n\n\ngetMonthsData=======", getMonthsData);
-    for (let i = 0; i < getMonthsData.length; i++) {
+  for (let i = 0; i < getMonthsData.length; i++) {
+    let data = getMonthsData[i].data;
+    let id = getMonthsData[i].id;
 
-    const getCarry = `select * from bank_carry_forward where month = ${getMonthsData[i].month} and year = ${getMonthsData[i].year}`;
+    let findBank = data.find((el) => el.bank === bankId);
+    let selectDataIndex = data.indexOf(findBank);
+    data.splice(selectDataIndex, 1);
 
-    let [getCarryData] = await db.promise().query(getCarry);
+    let newData = [...data];
 
+    if (findBank) {
+      const Insert = {
+        bank: +bankId,
+        credit: credit + +findBank.credit,
+        debit: debit + +findBank.debit,
+        total: +findBank.total + (+credit - +debit),
+      };
 
-    console.log("\n\n\ngetCarryData data in month function === " , getCarryData[0].data , getMonthsData[i].month);
-
-      // const opdata = transactionData.map((el) => {
-      //   let opbank = {
-      //     "credit": (+el.total_credit - +el.total_debit)+ +el.credit || 0,
-      //     "debit": +el.debit || 0,
-      //     "total": (+el.total_credit - +el.total_debit)+(+el.credit - +el.debit) || 0
-      //   };
-    
-      //   let op = {};
-      //   op[el.bank] = opbank;
-    
-      //   return op;
-      // });
-
-      // const data = JSON.stringify(opdata);
-
-      // console.log("\n\n\n updated data in month function-----------", data);
-
-      // const updateCarry = `UPDATE bank_carry_forward SET data = '${data}' where id=${getMonthsData[i].id};`;
-      // await db.promise().query(updateCarry);
+      newData.push(Insert);
     }
+
+    let newDataStringify = JSON.stringify(newData);
+
+    const updateQuery = `UPDATE bank_carry_forward SET data = '${newDataStringify}' where id=${id};`;
+    await db.promise().query(updateQuery);
+  }
 }
+
 module.exports = { bankCarryForword, carryForwordGet };

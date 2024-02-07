@@ -159,7 +159,7 @@ const bankGet = async (req, res) => {
     let [bankCarryData1] = await db.promise().query(bankCarrySql);
 
     let bankCarryData =
-      carryForwordData && carryForwordData[0] ? carryForwordData[0].data : [];
+      carryForwordData && carryForwordData[0] ? [carryForwordData[0].data] : [];
 
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
