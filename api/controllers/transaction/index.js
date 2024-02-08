@@ -7,7 +7,7 @@ const {
   bankTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
-const { bankCarryForword, transcationUpdateCarry } = require("../../../helper/carryforword");
+const { bankCarryForword } = require("../../../helper/carryforword");
 
 const transactionCreate = async (req, res) => {
   try {
@@ -134,30 +134,32 @@ const transactionUpdate = async (req, res) => {
       amount
     );
 
+   
+
+    // bankCarryForword(transaction[0].date,transactionId,'update',c,d);
+
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
 
-    if(transaction[0].paymentStatus == 'Paid'){
-      if (type === transaction[0].type) {
-        let updateCredit=0 , updateDebit = 0;
-        if (type == "Income") {
-          updateCredit = amount - transaction[0].credit;
-        } else if (type == "Expense") {
-          updateDebit = amount - transaction[0].debit;
-        }
-        bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit)
-      } else if (type !== transaction[0].type) {
-        let updateCredit=0 , updateDebit = 0;
-        if (type === "Income") {
-          updateCredit = amount;
-          updateDebit = -transaction[0].debit;
-        } else if (type === "Expense") {
-          updateCredit = -transaction[0].credit;
-          updateDebit = amount;
-        }
-        bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit);
+    if (type === transaction[0].type) {
+      let updateCredit=0 , updateDebit = 0;
+      if (type == "Income") {
+        updateCredit = amount - transaction[0].credit;
+      } else if (type == "Expense") {
+        updateDebit = amount - transaction[0].debit;
       }
+      bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit)
+    } else if (type !== transaction[0].type) {
+      let updateCredit=0 , updateDebit = 0;
+      if (type === "Income") {
+        updateCredit = amount;
+        updateDebit = -transaction[0].debit;
+      } else if (type === "Expense") {
+        updateCredit = -transaction[0].credit;
+        updateDebit = amount;
+      }
+      bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit);
     }
 
     let updateFields = Object.keys(req.body)
@@ -248,13 +250,9 @@ const transactionGet = async (req, res) => {
     const monthYearSql = `SELECT DISTINCT LEFT(DATE_FORMAT(date, '%M'), 3) AS month, YEAR(date) AS year FROM transaction
     WHERE isDeleted = 0 
     ORDER BY year ASC, FIELD(month, 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')`;
+
     const [monthYearData] = await db.promise().query(monthYearSql);
 
-    const monthSql = `select distinct month(date) as value , LEFT(DATE_FORMAT(date, '%M'), 3) AS label from ${transactionTabel}`;
-    const [monthData] = await db.promise().query(monthSql);
-
-    const yearSql = `select distinct year(date) as value , year(date) AS label from ${transactionTabel}`;
-    const [yearData] = await db.promise().query(yearSql);
 
     res.status(200).json({
       status: "success",
@@ -294,7 +292,7 @@ const transactionDelete = async (req, res) => {
     const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${Math.abs(
       bankdata[0].debit - bankdata[0].credit
     )} WHERE id=${bankdata[0].bank}`;
-    
+
     [bankamount] = await db.promise().query(query_bank_amount);
 
     bankCarryForword(transaction[0].date, transactionId, "delete");

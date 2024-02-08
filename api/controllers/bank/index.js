@@ -7,7 +7,10 @@ const {
   transactionTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
-const { carryForwordGet, bankCarryForword } = require("../../../helper/carryforword");
+const {
+  carryForwordGet,
+  bankCarryForword,
+} =require("../../../helper/carryforword");
 
 const bankCreate = async (req, res) => {
   try {
@@ -19,13 +22,10 @@ const bankCreate = async (req, res) => {
       bankname,
       banknickname,
       color,
-      credit,
-      debit,
       description,
       ifsc_code,
       mobileNo,
       status,
-      total,
       user,
       bankLabel,
     } = req.body;
@@ -36,10 +36,10 @@ const bankCreate = async (req, res) => {
       throw new Error("Bank Nick Name is Required..!");
     } else if (!amount) {
       throw new Error("Amount is Required..!");
-    }
-
-    if (!status) {
+    } else if (!status) {
       req.body.status = "active";
+    } else if (!bankLabel) {
+      bankLabel = "null";
     }
 
     req.body.isDeleted = 0;
@@ -54,16 +54,11 @@ const bankCreate = async (req, res) => {
       .map((key) => `'${req.body[key]}'`)
       .join(", ");
 
-    console.log("query===>", req.body);
     const sql = `INSERT INTO ${bankTabel}
       (user, bankname, banknickname, accountno, ifsc_code, mobileNo, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
        VALUES (${user}, '${bankname}', '${banknickname}', '${accountno}', '${ifsc_code}', '${mobileNo}', '${bankbranch}', ${amount}, '${description}',' ${color}', '${req.body.status}', ${req.body.isDeleted}, ${req.body.createdBy}, '${req.body.createdAt}')`;
 
-    console.log("query===>", sql);
     const [bank] = await db.promise().query(sql);
-    if (!bankLabel) {
-      bankLabel = "null";
-    }
 
     const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date,description) VALUES (${
       bank.insertId
@@ -105,7 +100,6 @@ const bankUpdate = async (req, res) => {
       .join(", ");
 
     const Quary = `UPDATE ${bankTabel} SET ${updateFields} WHERE id = ${bankId}`;
-
     const [updateuser] = await db.promise().query(Quary);
 
     res.status(200).json({
@@ -128,19 +122,6 @@ const bankGet = async (req, res) => {
 
     const carryForwordData = await carryForwordGet(month, year);
 
-    // const sql = `
-    //   SELECT b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid, b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,
-    //   b.description, l.name AS bankLabel, b.status, b.color, COALESCE(credit, 0) AS credit, COALESCE(debit, 0) AS debit, COALESCE(credit, 0) - COALESCE(debit, 0) AS total
-    //   FROM bank b
-    //   LEFT JOIN user u ON b.user = u.id
-    //   LEFT JOIN labelcategory l ON b.bankLabel = l.id
-    //   LEFT JOIN
-    //   (
-    //       SELECT bank, SUM(credit) AS credit ,SUM(debit) AS debit
-    //       FROM transaction WHERE paymentStatus = 'Paid' AND isDeleted = 0 AND MONTH(date) <= ${month} AND YEAR(date) <= ${year}
-    //       GROUP BY bank
-    //   ) t ON b.id = t.bank WHERE b.isDeleted = 0 `;
-
     const sql = `
     SELECT  b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color
     FROM bank b
@@ -153,11 +134,7 @@ const bankGet = async (req, res) => {
 
     const [Data] = await db.promise().query(sql);
 
-
-    const bankCarrySql = `
-    select * from bank_carry_forward where month = ${month} AND year= ${year}
-    `;
-
+    const bankCarrySql = `select * from bank_carry_forward where month = ${month} AND year= ${year}`;
     let [bankCarryData1] = await db.promise().query(bankCarrySql);
 
     let bankCarryData =
@@ -167,12 +144,15 @@ const bankGet = async (req, res) => {
 
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
-      console.log("\n\nbankId ====",bankId);
-
-      const correspondingBankCarryData = bankCarryData[0].find((el) => el.bank === +bankId);
-
-      console.log("\n\correspondingBankCarryData ====",correspondingBankCarryData);
-      if (correspondingBankCarryData) {  
+      console.log("\n\nbankId ====", bankId);
+      const correspondingBankCarryData = bankCarryData[0].find(
+        (el) => el.bank === +bankId
+      );
+      console.log(
+        "\ncorrespondingBankCarryData ====",
+        correspondingBankCarryData
+      );
+      if (correspondingBankCarryData) {
         const { credit, debit, total } = correspondingBankCarryData;
         dataObject.credit = credit;
         dataObject.debit = debit;
@@ -182,19 +162,24 @@ const bankGet = async (req, res) => {
         dataObject.debit = 0;
         dataObject.total = +dataObject.amount;
       }
-
       if (bankCarryData1.length == 0) {
         dataObject.credit = total;
         dataObject.debit = 0;
       }
     });
 
-    console.log(Data);
 
+    const monthSql = `select distinct month(date) as value , LEFT(DATE_FORMAT(date, '%M'), 3) AS label from ${transactionTabel}`;
+    const [monthData] = await db.promise().query(monthSql);
+
+    const yearSql = `select distinct year(date) as value , year(date) AS label from ${transactionTabel}`;
+    const [yearData] = await db.promise().query(yearSql);
     res.status(200).json({
       status: "success",
       message: "get adata of bank",
       data: Data,
+      monthData,
+      yearData
     });
   } catch (error) {
     res.status(404).json({
