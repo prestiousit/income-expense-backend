@@ -7,7 +7,7 @@ const {
   transactionTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
-const { carryForwordGet } = require("../../../helper/carryforword");
+const { carryForwordGet, bankCarryForword } = require("../../../helper/carryforword");
 
 const bankCreate = async (req, res) => {
   try {
@@ -67,9 +67,11 @@ const bankCreate = async (req, res) => {
 
     const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date,description) VALUES (${
       bank.insertId
-    },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}'),"bank added"`;
+    },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}',"bank added")`;
     console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
+
+    bankCarryForword(req.body.date, transaction.insertId);
 
     res.status(201).json({
       status: "sucess",

@@ -2,7 +2,7 @@ const moment = require("moment");
 const db = require("../config/database");
 const { transactionTabel, bankTabel } = require("../database/tabelName");
 
-async function bankCarryForword(date, transcationId,type) {
+async function bankCarryForword(date, transcationId,type,updateCredit,updateDebit) {
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
@@ -47,8 +47,8 @@ async function bankCarryForword(date, transcationId,type) {
 
         const Insert = {
           bank: +bank,
-          credit: +selectBank.credit + +credit,
-          debit: +selectBank.debit + +debit,
+          credit: +selectBank.total + +credit,
+          debit: +debit,
           total: +selectBank.total + (+credit - +debit),
         };
         selectDataRemove.push(Insert);
@@ -84,6 +84,11 @@ async function bankCarryForword(date, transcationId,type) {
       if(type == 'delete'){
         credit = -+credit;
         debit = -+debit;
+      }
+
+      if(type == 'update'){
+        credit = updateCredit;
+        debit = updateDebit;
       }
 
       console.log("\n\ncredit====",credit,debit);
@@ -156,10 +161,12 @@ async function monthFrowerd(date, credit, debit, bankId) {
 
     let newData = [...data];
 
+    console.log("\n\ninloop credit====",credit);
+
     if (findBank) {
       const Insert = {
         bank: +bankId,
-        credit: credit + +findBank.credit,
+        credit: +findBank.credit + (credit - debit),
         debit: +findBank.debit,
         total: +findBank.total + (+credit - +debit),
       };
@@ -175,5 +182,7 @@ async function monthFrowerd(date, credit, debit, bankId) {
     await db.promise().query(updateQuery);
   }
 }
+
+
 
 module.exports = { bankCarryForword, carryForwordGet };
