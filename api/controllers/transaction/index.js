@@ -134,34 +134,32 @@ const transactionUpdate = async (req, res) => {
       amount
     );
 
-    if (type === transaction[0].type) {
-      let updateCredit=0 , updateDebit = 0;
-      if (type == "Income") {
-        updateCredit = amount - transaction[0].credit;
-      } else if (type == "Expense") {
-        updateDebit = amount - transaction[0].debit;
-      }
-      bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit)
-      // transcationUpdateCarry(transaction[0].date,transactionId,updateCredit,updateDebit);
-    } else if (type !== transaction[0].type) {
-      let updateCredit=0 , updateDebit = 0;
-      if (type === "Income") {
-        updateCredit = amount;
-        updateDebit = -transaction[0].debit;
-      } else if (type === "Expense") {
-        updateCredit = -transaction[0].credit;
-        updateDebit = amount;
-      }
-      bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit);
-      // transcationUpdateCarry(transaction[0].date,transactionId,updateCredit,updateDebit);
-    }
-
-    // bankCarryForword(transaction[0].date,transactionId,'update',c,d);
-
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
-    // let bodyAmount = req.body.amount;
+
+    if(transaction[0].paymentStatus == 'Paid'){
+      if (type === transaction[0].type) {
+        let updateCredit=0 , updateDebit = 0;
+        if (type == "Income") {
+          updateCredit = amount - transaction[0].credit;
+        } else if (type == "Expense") {
+          updateDebit = amount - transaction[0].debit;
+        }
+        bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit)
+      } else if (type !== transaction[0].type) {
+        let updateCredit=0 , updateDebit = 0;
+        if (type === "Income") {
+          updateCredit = amount;
+          updateDebit = -transaction[0].debit;
+        } else if (type === "Expense") {
+          updateCredit = -transaction[0].credit;
+          updateDebit = amount;
+        }
+        bankCarryForword(transaction[0].date,transactionId,'update',updateCredit,updateDebit);
+      }
+    }
+
     let updateFields = Object.keys(req.body)
       .map((key) => {
         if (req.body[key] !== null) {
@@ -198,8 +196,10 @@ const transactionUpdate = async (req, res) => {
     query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
     const [updatedTransaction] = await db.promise().query(query);
 
-    const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
-    await db.promise().query(bankUpdateAmountQuery);
+    if(transaction[0].paymentStatus == 'Paid'){
+      const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
+      await db.promise().query(bankUpdateAmountQuery);
+    }
 
     res.status(200).json({
       status: "success",
@@ -285,13 +285,16 @@ const transactionDelete = async (req, res) => {
     LEFT OUTER JOIN (SELECT id,credit as credit FROM transaction WHERE type='Income') credit ON t.id = credit.id
     LEFT OUTER JOIN (SELECT id,debit as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.id=${transactionId} AND paymentStatus = 'Paid'`;
     const [bankdata] = await db.promise().query(query_bank);
+
     const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
       tokenData.id
     } WHERE id = ${transactionId}`;
+
     const [deletetransaction] = await db.promise().query(deleteQuery);
     const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${Math.abs(
       bankdata[0].debit - bankdata[0].credit
     )} WHERE id=${bankdata[0].bank}`;
+    
     [bankamount] = await db.promise().query(query_bank_amount);
 
     bankCarryForword(transaction[0].date, transactionId, "delete");

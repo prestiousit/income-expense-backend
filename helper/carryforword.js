@@ -45,6 +45,16 @@ async function bankCarryForword(date, transcationId,type,updateCredit,updateDebi
         lastMonthData[0].data.splice(selectDataIndex, 1);
         const selectDataRemove = lastMonthData[0].data;
 
+        selectDataRemove =  selectDataRemove.map((el)=>{
+          return {
+            bank : el.bank,
+            credit : el.total,
+            debit : 0,
+            total : el.total
+          }
+        })
+        console.log("\n\nselectdata==",selectDataRemove);
+
         const Insert = {
           bank: +bank,
           credit: +selectBank.total + +credit,
@@ -58,6 +68,16 @@ async function bankCarryForword(date, transcationId,type,updateCredit,updateDebi
         await db.promise().query(insertCarry);
       } else {
         let data = [...lastMonthData[0].data];
+
+        data = data.map((el)=>{
+          return {
+            bank : el.bank,
+            credit : el.total,
+            debit : 0,
+            total : el.total
+          }
+        })
+        console.log("\n\ndata==",data);
         const Insert = {
           bank: +bank,
           credit: +credit,

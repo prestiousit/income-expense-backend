@@ -163,15 +163,17 @@ const bankGet = async (req, res) => {
     let bankCarryData =
       carryForwordData && carryForwordData[0] ? [carryForwordData[0].data] : [];
 
+      console.log("\n\nbankCarryData=====",bankCarryData);
+
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
+      console.log("\n\nbankId ====",bankId);
 
-      const correspondingBankCarryData = bankCarryData.find((entry) =>
-        entry.hasOwnProperty(bankId)
-      );
+      const correspondingBankCarryData = bankCarryData[0].find((el) => el.bank === +bankId);
 
-      if (correspondingBankCarryData) {
-        const { credit, debit, total } = correspondingBankCarryData[bankId];
+      console.log("\n\correspondingBankCarryData ====",correspondingBankCarryData);
+      if (correspondingBankCarryData) {  
+        const { credit, debit, total } = correspondingBankCarryData;
         dataObject.credit = credit;
         dataObject.debit = debit;
         dataObject.total = total;
@@ -181,14 +183,13 @@ const bankGet = async (req, res) => {
         dataObject.total = +dataObject.amount;
       }
 
-
-      // if (bankCarryData1.length == 0) {
-      //   dataObject.credit = +dataObject.amount;
-      //   dataObject.debit = 0;
-      // }
+      if (bankCarryData1.length == 0) {
+        dataObject.credit = total;
+        dataObject.debit = 0;
+      }
     });
 
-    
+    console.log(Data);
 
     res.status(200).json({
       status: "success",
