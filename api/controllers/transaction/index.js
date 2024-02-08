@@ -263,7 +263,7 @@ const transactionDelete = async (req, res) => {
       bankdata[0].debit - bankdata[0].credit
     )} WHERE id=${bankdata[0].bank}`;
     [bankamount] = await db.promise().query(query_bank_amount);
-    bankCarryForword(transaction[0].date,transactionId);
+    bankCarryForword(transaction[0].date,transactionId,"delete");
 
     res.status(200).json({
       status: "success",

@@ -2,7 +2,7 @@ const moment = require("moment");
 const db = require("../config/database");
 const { transactionTabel, bankTabel } = require("../database/tabelName");
 
-async function bankCarryForword(date, transcationId) {
+async function bankCarryForword(date, transcationId,type) {
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
@@ -23,7 +23,7 @@ async function bankCarryForword(date, transcationId) {
   const lastMonth = `select data from bank_carry_forward where month = ${queryMonth} and year = ${queryYear}`;
   const [lastMonthData] = await db.promise().query(lastMonth);
 
-  const { bank, credit, debit } = transactionData[0];
+  let { bank, credit, debit } = transactionData[0];
   if (!curretMonthData.length) {
     if (!lastMonthData.length) {
       const data = [];
@@ -81,6 +81,12 @@ async function bankCarryForword(date, transcationId) {
 
       let data = [...selectDataRemove];
 
+      if(type == 'delete'){
+        credit = -+credit;
+        debit = -+debit;
+      }
+
+      console.log("\n\ncredit====",credit,debit);
       const Insert = {
         bank: +bank,
         credit: +selectBank.credit + +credit,
@@ -143,6 +149,8 @@ async function monthFrowerd(date, credit, debit, bankId) {
     let id = getMonthsData[i].id;
 
     let findBank = data.find((el) => el.bank === bankId);
+
+    console.log("\n\nfindbank===",findBank);
     let selectDataIndex = data.indexOf(findBank);
     data.splice(selectDataIndex, 1);
 
@@ -152,12 +160,14 @@ async function monthFrowerd(date, credit, debit, bankId) {
       const Insert = {
         bank: +bankId,
         credit: credit + +findBank.credit,
-        debit: debit + +findBank.debit,
+        debit: +findBank.debit,
         total: +findBank.total + (+credit - +debit),
       };
 
       newData.push(Insert);
     }
+
+    console.log("\n\newData===",newData);   
 
     let newDataStringify = JSON.stringify(newData);
 
