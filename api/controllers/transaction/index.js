@@ -100,6 +100,7 @@ const transactionCreate = async (req, res) => {
       const updateBankQuery = `UPDATE ${bankTabel} SET amount = ${currentAmount} WHERE id = ${bank}`;
       await db.promise().query(updateBankQuery);
       
+      bankCarryForword(req.body.date);
     }
     bankCarryForword(req.body.date,transaction.insertId);
 
@@ -169,7 +170,7 @@ const transactionUpdate = async (req, res) => {
     const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
     await db.promise().query(bankUpdateAmountQuery);
 
-    bankCarryForword(transaction[0].date,transactionId);
+    bankCarryForword(transaction[0].date);
 
     res.status(200).json({
       status: "success",
@@ -263,7 +264,7 @@ const transactionDelete = async (req, res) => {
       bankdata[0].debit - bankdata[0].credit
     )} WHERE id=${bankdata[0].bank}`;
     [bankamount] = await db.promise().query(query_bank_amount);
-    bankCarryForword(transaction[0].date,transactionId,"delete");
+    bankCarryForword(transaction[0].date);
 
     res.status(200).json({
       status: "success",
