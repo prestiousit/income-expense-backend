@@ -176,4 +176,13 @@ async function monthFrowerd(date, credit, debit, bankId) {
   }
 }
 
-module.exports = { bankCarryForword, carryForwordGet };
+
+async function transcationUpdateCarry(date,transactionId,type,amount){
+  let month = moment(date || moment().toISOString()).month() + 1;
+  let year = moment(date || moment().toISOString()).year();
+  const transactionSelectQuery = `select date,bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
+  let [transactionData] = await db.promise().query(transactionSelectQuery);
+  const curretMonth = `select * from bank_carry_forward where month=${month} AND year=${year}`;
+  const [curretMonthData] = await db.promise().query(curretMonth);
+}
+module.exports = { bankCarryForword, carryForwordGet,transcationUpdateCarry };

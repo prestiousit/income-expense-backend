@@ -7,7 +7,7 @@ const {
   bankTabel,
 } = require("../../../database/tabelName");
 const { jwtTokenVerify } = require("../../../helper/methods");
-const { bankCarryForword } = require("../../../helper/carryforword");
+const { bankCarryForword, transcationUpdateCarry } = require("../../../helper/carryforword");
 
 const transactionCreate = async (req, res) => {
   try {
@@ -130,6 +130,27 @@ const transactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
+
+    if (type === transaction[0].type) {
+      let updateAmount;
+      if (type == "Income") {
+        updateAmount = amount - transaction[0].credit;
+      } else if (type == "Expense") {
+        updateAmount = amount - transaction[0].debit;
+      }
+      transcationUpdateCarry(transaction[0].date,transactionId,type,updateAmount);
+    } else if (type !== transaction[0].type) {
+      let updateAmount;
+      if (type === "Income") {
+        updateAmount = amount - transaction[0].debit ;
+      } else if (type === "Expense") {
+        updateAmount = amount - transaction[0].credit ;
+      }
+      transcationUpdateCarry(transaction[0].date,transactionId,type,updateAmount);
+    }
+
+
+
     // let bodyAmount = req.body.amount;
     let updateFields = Object.keys(req.body)
       .map((key) => {
@@ -170,7 +191,7 @@ const transactionUpdate = async (req, res) => {
     const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
     await db.promise().query(bankUpdateAmountQuery);
 
-    bankCarryForword(transaction[0].date);
+    bankCarryForword(transaction[0].date,transaction[0].bank,'update');
 
     res.status(200).json({
       status: "success",
