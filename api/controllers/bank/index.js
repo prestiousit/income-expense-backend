@@ -10,7 +10,7 @@ const { jwtTokenVerify, hasMonthChanged } = require("../../../helper/methods");
 const {
   carryForwordGet,
   bankCarryForword,
-} =require("../../../helper/carryforword");
+} = require("../../../helper/carryforword");
 
 const bankCreate = async (req, res) => {
   try {
@@ -63,7 +63,6 @@ const bankCreate = async (req, res) => {
     const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date,description) VALUES (${
       bank.insertId
     },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}',"bank added")`;
-    console.log("sqlll===>", sql1);
     const [transaction] = await db.promise().query(sql1);
 
     bankCarryForword(req.body.date, transaction.insertId);
@@ -134,23 +133,13 @@ const bankGet = async (req, res) => {
 
     const [Data] = await db.promise().query(sql);
 
-    const bankCarrySql = `select * from bank_carry_forward where month = ${month} AND year= ${year}`;
-    let [bankCarryData1] = await db.promise().query(bankCarrySql);
-
     let bankCarryData =
       carryForwordData && carryForwordData[0] ? [carryForwordData[0].data] : [];
 
-      console.log("\n\nbankCarryData=====",bankCarryData);
-
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
-      console.log("\n\nbankId ====", bankId);
       const correspondingBankCarryData = bankCarryData[0].find(
         (el) => el.bank === +bankId
-      );
-      console.log(
-        "\ncorrespondingBankCarryData ====",
-        correspondingBankCarryData
       );
       if (correspondingBankCarryData) {
         const { credit, debit, total } = correspondingBankCarryData;
@@ -162,24 +151,19 @@ const bankGet = async (req, res) => {
         dataObject.debit = 0;
         dataObject.total = +dataObject.amount;
       }
-      if (bankCarryData1.length == 0) {
-        dataObject.credit = total;
-        dataObject.debit = 0;
-      }
     });
 
-
-    const monthSql = `select distinct month(date) as value , LEFT(DATE_FORMAT(date, '%M'), 3) AS label from ${transactionTabel}`;
+    const monthSql = `select distinct month as value , LEFT(DATE_FORMAT(concat(year,'-',month,'-01'), '%M'), 3) AS label from bank_carry_forward ORDER BY month ASC`;
     const [monthData] = await db.promise().query(monthSql);
 
-    const yearSql = `select distinct year(date) as value , year(date) AS label from ${transactionTabel}`;
+    const yearSql = `select distinct year as value , year AS label from bank_carry_forward`;
     const [yearData] = await db.promise().query(yearSql);
     res.status(200).json({
       status: "success",
       message: "get adata of bank",
       data: Data,
       monthData,
-      yearData
+      yearData,
     });
   } catch (error) {
     res.status(404).json({

@@ -127,17 +127,6 @@ const transactionUpdate = async (req, res) => {
     const selectQuery = `SELECT * FROM ${transactionTabel} WHERE id = ${transactionId}`;
     const [transaction] = await db.promise().query(selectQuery);
 
-    console.log(
-      "\n\ntransaction_old====",
-      transaction[0].credit,
-      transaction[0].debit,
-      amount
-    );
-
-   
-
-    // bankCarryForword(transaction[0].date,transactionId,'update',c,d);
-
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }

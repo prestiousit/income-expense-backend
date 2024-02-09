@@ -107,7 +107,6 @@ async function bankCarryForword(
         debit = updateDebit;
       }
 
-      console.log("\n\ncredit====", credit, debit);
       const Insert = {
         bank: +bank,
         credit: +selectBank.credit + +credit,
@@ -151,8 +150,6 @@ async function carryForwordGet(month, year) {
   try {
     const [findCarryData] = await db.promise().query(findCarryQuery);
     const bankData = findCarryData ? findCarryData : [];
-
-    console.log("\n\n\nbankData========", bankData);
     return bankData;
   } catch (error) {
     console.error("Error in carryForwordGet:", error);
@@ -175,7 +172,6 @@ async function monthFrowerd(date, credit, debit, bankId) {
 
     let newData = [];
 
-    console.log("\n\nfindBank====",findBank,bankId);
 
     if (findBank) {
       let selectDataIndex = data.indexOf(findBank);
@@ -189,7 +185,6 @@ async function monthFrowerd(date, credit, debit, bankId) {
 
       newData.push(...data,Insert);
 
-      console.log("\n\newData in find====",newData);
     } else {
       const Insert = {
         bank: +bankId,
@@ -200,7 +195,6 @@ async function monthFrowerd(date, credit, debit, bankId) {
       
 
       newData.push(...data,Insert);
-      console.log("\n\newData in else====",newData,data);
     }
 
     let newDataStringify = JSON.stringify(newData);

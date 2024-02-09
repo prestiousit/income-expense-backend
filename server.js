@@ -8,11 +8,14 @@ const expressLogger = expressPino({ logging });
 const { MaxFileSizeMB } = require("./helper/constants");
 const apiRoutes = require("./api");
 const db = require("./config/database");
+const cron = require("node-cron");
+const cronJobScheduler = require("./cronjob");
 
 const app = express();
 
 exports.start_server = async () => {
   try {
+    cron.schedule("0 0 1 * * *", () => cronJobScheduler());
     app.use(expressLogger);
     morgan.token("body", (req, res) => JSON.stringify(req.body));
     app.use(
@@ -27,7 +30,6 @@ exports.start_server = async () => {
     app.use(cors());
     app.use("/api", apiRoutes);
     app.get("/health", async function (req, res) {
-
       return res.send("Ok, Working fine.");
     });
 
@@ -37,7 +39,6 @@ exports.start_server = async () => {
         return;
       }
       logging.info("Server started on " + process.env.PORT || 5000);
-      console.log(process.env.PORT);
     });
   } catch (error) {
     logging.error(`Error Occured! - start_server - ${error}`);
