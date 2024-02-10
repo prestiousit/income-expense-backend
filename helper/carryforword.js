@@ -12,7 +12,7 @@ async function bankCarryForword(
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
-  const transactionSelectQuery = `select date,bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
+  const transactionSelectQuery = `select bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
   let [transactionData] = await db.promise().query(transactionSelectQuery);
 
   const curretMonth = `select * from bank_carry_forward where month=${month} AND year=${year}`;
@@ -44,6 +44,8 @@ async function bankCarryForword(
 
       const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${newData}');`;
       await db.promise().query(insertCarry);
+
+      monthFrowerd(date, +credit, +debit, +bank);
     } else {
       const selectBank = lastMonthData[0].data.find((el) => el.bank === bank);
 
@@ -67,6 +69,8 @@ async function bankCarryForword(
 
         const insertCarry = `INSERT INTO bank_carry_forward (month, year, data) VALUES ('${month}', '${year}', '${newData}');`;
         await db.promise().query(insertCarry);
+
+        monthFrowerd(date, +credit, +debit, +bank);
       } else {
         let data = [...lastMonthData[0].data];
 

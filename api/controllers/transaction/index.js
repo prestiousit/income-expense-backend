@@ -165,15 +165,6 @@ const transactionUpdate = async (req, res) => {
           updateDebit
         );
       }
-    }else{
-      const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
-        tokenData.id
-      } WHERE id = ${transactionId}`;
-      const [deletetransaction] = await db.promise().query(deleteQuery);
-      bankCarryForword(transaction[0].date, transactionId, "delete");
-
-      
-      bankCarryForword(date, transactionId);
     }
 
     let updateFields = Object.keys(req.body)
@@ -208,9 +199,31 @@ const transactionUpdate = async (req, res) => {
       updateFields += `,credit = 0,debit = '${amount}'`;
     }
 
-    let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
-    query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
-    const [updatedTransaction] = await db.promise().query(query);
+    if (date !== transaction[0].date) {
+      // const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+      //   tokenData.id
+      // } WHERE id = ${transactionId}`;
+      // const [deletetransaction] = await db.promise().query(deleteQuery);
+      if (date < transaction[0].date) {
+        let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
+        query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
+        const [updatedTransaction] = await db.promise().query(query);
+        bankCarryForword(transaction[0].date, transactionId, "delete");
+        bankCarryForword(date, transactionId);
+      } else {
+        bankCarryForword(transaction[0].date, transactionId, "delete");
+        let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
+        query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
+        const [updatedTransaction] = await db.promise().query(query);
+        bankCarryForword(date, transactionId);
+      }
+    }
+
+    if (date === transaction[0].date) {
+      let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
+      query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
+      const [updatedTransaction] = await db.promise().query(query);
+    }
 
     if (transaction[0].paymentStatus == "Paid") {
       const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
