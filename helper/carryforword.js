@@ -115,7 +115,7 @@ async function bankCarryForword(
         bank: +bank,
         credit: +selectBank.credit + +credit,
         debit: +selectBank.debit + +debit,
-        total: +selectBank.total + (+credit - +debit),
+        total: +selectBank.total + (+credit- +debit),
       };
 
       data.push(Insert);
@@ -182,7 +182,7 @@ async function monthFrowerd(date, credit, debit, bankId) {
       data.splice(selectDataIndex, 1);
       const Insert = {
         bank: +bankId,
-        credit: +findBank.credit + (credit - debit),
+        credit: +findBank.credit + +credit,
         debit: +findBank.debit,
         total: +findBank.total + (+credit - +debit),
       };
