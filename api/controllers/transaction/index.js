@@ -120,7 +120,17 @@ const transactionUpdate = async (req, res) => {
   try {
     const transactionId = req.query.id;
     const tokenData = await jwtTokenVerify(req.headers.token);
-    const { type, amount, date } = req.body;
+    const {
+      type,
+      amount,
+      date,
+      description,
+      paidBy,
+      bank,
+      paymentStatus,
+      transactionLabel,
+      color,
+    } = req.body;
 
     req.body.updatedAt = new Date();
     req.body.updatedBy = tokenData.id;
@@ -130,6 +140,8 @@ const transactionUpdate = async (req, res) => {
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
     }
+
+    let iamount = amount;
 
     if (date === transaction[0].date) {
       if (type === transaction[0].type) {
@@ -199,30 +211,33 @@ const transactionUpdate = async (req, res) => {
       updateFields += `,credit = 0,debit = '${amount}'`;
     }
 
-    if (date !== transaction[0].date) {
-      // const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
-      //   tokenData.id
-      // } WHERE id = ${transactionId}`;
-      // const [deletetransaction] = await db.promise().query(deleteQuery);
-      if (date < transaction[0].date) {
-        let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
-        query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
-        const [updatedTransaction] = await db.promise().query(query);
-        bankCarryForword(transaction[0].date, transactionId, "delete");
-        bankCarryForword(date, transactionId);
-      } else {
-        bankCarryForword(transaction[0].date, transactionId, "delete");
-        let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
-        query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
-        const [updatedTransaction] = await db.promise().query(query);
-        bankCarryForword(date, transactionId);
-      }
-    }
-
     if (date === transaction[0].date) {
       let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
       query = query.replace(/,\s*amount\s*=\s*'[^']*'/i, "");
       const [updatedTransaction] = await db.promise().query(query);
+    }
+
+    if (date !== transaction[0].date) {
+      const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+        tokenData.id
+      } WHERE id = ${transactionId}`;
+      const [deletetransaction] = await db.promise().query(deleteQuery);
+
+      bankCarryForword(transaction[0].date, transactionId, "delete");
+
+      const in_credit = type === "Income" ? iamount : 0;
+      const in_debit = type === "Expense" ? iamount : 0;
+      const isDeleted = 0;
+      const updatedBy = tokenData.id;
+      const updatedAt = moment().toISOString();
+
+      const query = `INSERT INTO ${transactionTabel} (date,credit,debit,type,description,paidby,bank,
+      paymentStatus,transactionLabel,color,isDeleted,createdBy,createdAt,updatedBy,updatedAt) VALUES 
+      ('${date}',${in_credit},${in_debit},'${type}','${description}','${paidBy}','${bank}','${paymentStatus}','${transactionLabel}','${color}',${isDeleted},${transaction[0].createdBy},'${transaction[0].createdAt}',${updatedBy},'${updatedAt}')`;
+
+      const [transactionInsert] = await db.promise().query(query);
+
+      bankCarryForword(date, transactionInsert.insertId);
     }
 
     if (transaction[0].paymentStatus == "Paid") {
