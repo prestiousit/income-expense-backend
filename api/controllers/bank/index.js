@@ -39,7 +39,7 @@ const bankCreate = async (req, res) => {
     } else if (!status) {
       req.body.status = "active";
     } else if (!bankLabel) {
-      bankLabel = "null";
+      bankLabel = null;
     }
 
     req.body.isDeleted = 0;
@@ -55,8 +55,8 @@ const bankCreate = async (req, res) => {
       .join(", ");
 
     const sql = `INSERT INTO ${bankTabel}
-      (user, bankname, banknickname, accountno, ifsc_code, mobileNo, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
-       VALUES (${user}, '${bankname}', '${banknickname}', '${accountno}', '${ifsc_code}', '${mobileNo}', '${bankbranch}', ${amount}, '${description}',' ${color}', '${req.body.status}', ${req.body.isDeleted}, ${req.body.createdBy}, '${req.body.createdAt}')`;
+      (user, bankname, banknickname, accountno, ifsc_code, mobileNo,bankLabel, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
+       VALUES (${user}, '${bankname}', '${banknickname}', '${accountno}', '${ifsc_code}', '${mobileNo}',${bankLabel}, '${bankbranch}', ${amount}, '${description}',' ${color}', '${req.body.status}', ${req.body.isDeleted}, ${req.body.createdBy}, '${req.body.createdAt}')`;
 
     const [bank] = await db.promise().query(sql);
 
