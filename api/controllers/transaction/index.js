@@ -360,11 +360,26 @@ const transactionDelete = async (req, res) => {
 
     const [deletetransaction] = await db.promise().query(deleteQuery);
 
-    const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${Math.abs(
-      bankdata[0].debit - bankdata[0].credit
-    )} WHERE id=${bankdata[0].bank}`;
+    const count_trans = `select count(*) as count from ${transactionTabel} where bank = ${bankdata[0].bank} and isDeleted = 0;`;
+    const [transactionData] = await db.promise().query(count_trans);
 
-    [bankamount] = await db.promise().query(query_bank_amount);
+    console.log("\nout=======\n",transactionData[0].count === 0);
+    if(transactionData[0].count === 0){
+      console.log("\n=======\n");
+      const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+        tokenData.id
+      } WHERE id = ${bankdata[0].bank}`;
+  
+      const [deletetransaction] = await db.promise().query(deleteQuery);
+
+      console.log("\n=======\n",deletetransaction);
+    }
+
+    // const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${Math.abs(
+    //   bankdata[0].debit - bankdata[0].credit
+    // )} WHERE id=${bankdata[0].bank}`;
+
+    // [bankamount] = await db.promise().query(query_bank_amount);
 
     bankCarryForword(transaction[0].date, transactionId, "delete");
 
@@ -372,6 +387,7 @@ const transactionDelete = async (req, res) => {
       status: "success",
       message: "transaction Deleted successfully",
       transaction: deletetransaction,
+      transaction1:transactionData[0].count
     });
   } catch (error) {
     res.status(404).json({
@@ -381,9 +397,31 @@ const transactionDelete = async (req, res) => {
   }
 };
 
+const transactionShouldDelete = async (req, res) => {
+  try {
+    const transactionId = req.params.id;
+    const query = `select bankNickName from ${transactionTabel} t left join ${bankTabel} b on b.id = t.bank where firstentry = 1 and t.id = ${transactionId}`;
+    const [Data] = await db.promise().query(query);
+
+    data = Data.length == 0 ? "Are you sure you want to Delete" : `This is last record of bank ''${Data[0].bankNickName}'' if you delete it bank will also get Deleted`;
+
+    res.status(200).json({
+      status: "success",
+      // message: "transaction Deleted successfully",
+      data
+    });
+  } catch (error) {
+    res.status(404).json({
+      status: "failed",
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   transactionCreate,
   transactionUpdate,
   transactionGet,
   transactionDelete,
+  transactionShouldDelete
 };

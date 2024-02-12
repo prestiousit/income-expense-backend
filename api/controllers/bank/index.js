@@ -189,6 +189,9 @@ const bankDelete = async (req, res) => {
       throw new Error("bank not found");
     }
 
+    // const count_trans = `select count(*) from ${transactionTabel} where bank = ${bankId};`;
+    // const [transactionData] = await db.promise().query(count_trans);
+    
     const checkTranscationQuery = `select * from ${transactionTabel} where bank = ${bankId} AND isDeleted = 0`
     const [checkTransaction] = await db.promise().query(checkTranscationQuery);
 
