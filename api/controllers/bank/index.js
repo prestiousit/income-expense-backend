@@ -30,6 +30,10 @@ const bankCreate = async (req, res) => {
       bankLabel,
     } = req.body;
 
+    const checkBankQuery = `select * from ${bankTabel} where BankNickName = '${banknickname}'`;
+    const  [checkBankData] = await db.promise().query(checkBankQuery);
+    if(checkBankData[0]) throw new Error("bank already exist..!");
+
     if (!user) {
       throw new Error("User is Required..!");
     } else if (!banknickname) {
@@ -185,15 +189,40 @@ const bankDelete = async (req, res) => {
       throw new Error("bank not found");
     }
 
-    const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${moment()}', deletedBy = ${
-      tokenData.id
-    } WHERE id = ${bankId}`;
-    const [deletebank] = await db.promise().query(deleteQuery);
+    const checkTranscationQuery = `select * from ${transactionTabel} where bank = ${bankId} AND isDeleted = 0`
+    const [checkTransaction] = await db.promise().query(checkTranscationQuery);
+
+    if (checkTransaction.length === 1) {
+      const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${moment()}', deletedBy = ${
+        tokenData.id
+      } WHERE id = ${bankId}`;
+      const [deletebank] = await db.promise().query(deleteQuery);
+
+      const transactionId = checkTransaction[0].id
+      const deleteTransactionQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+        tokenData.id
+      } WHERE id = ${transactionId}`;
+  
+      // await db.promise().query(deleteTransactionQuery);
+
+      const carryForwordQuery = `SELECT * FROM bank_carry_forward WHERE JSON_CONTAINS(data, '{"bank": ${bankId}}', '$') order by month`;
+      const [carryData] = await db.promise().query(carryForwordQuery);
+
+      await Promise.all(
+        carryData.map(async(el)=>{
+          const newData = el.data.filter(((el)=>el.bank !=  bankId));
+          const stringify = JSON.stringify(newData);
+          const updateQuery = `update bank_carry_forward set data = '${stringify}' where id = ${el.id}`;
+          await db.promise().query(updateQuery);
+        })
+      )
+    }else{
+      throw new Error('Bank still used in Transactions..!');
+    }
 
     res.status(200).json({
       status: "success",
       message: "bank Deleted successfully",
-      label: deletebank,
     });
   } catch (error) {
     res.status(404).json({
