@@ -64,9 +64,9 @@ const bankCreate = async (req, res) => {
 
     const [bank] = await db.promise().query(sql);
 
-    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date,description) VALUES (${
+    const sql1 = `INSERT INTO ${transactionTabel} (bank , paidBy , credit ,debit ,transactionLabel,type,paymentStatus,date,description, isDeleted, createdBy, createdAt, firstentry) VALUES (${
       bank.insertId
-    },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}',"bank added")`;
+    },${user},${amount},0,${bankLabel},"Income","Paid",'${moment().toISOString()}',"bank added", ${req.body.isDeleted}, ${req.body.createdBy}, '${req.body.createdAt}',1)`;
     const [transaction] = await db.promise().query(sql1);
 
     bankCarryForword(req.body.date, transaction.insertId);

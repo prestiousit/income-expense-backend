@@ -24,6 +24,8 @@ const transactionCreate = async (req, res) => {
       color,
     } = req.body;
 
+    let firstentry = 0;
+
     if (typeof bank === "string") {
       if (!amount || !paidBy) {
         throw new Error("Amount or Paid Persone Required..!");
@@ -39,6 +41,9 @@ const transactionCreate = async (req, res) => {
         })`;
         const [data] = await db.promise().query(sql);
         bank = data.insertId;
+
+        firstentry = 1;
+
       } else {
         bank = findNickNameData[0].id;
       }
@@ -63,6 +68,7 @@ const transactionCreate = async (req, res) => {
       "isDeleted",
       "createdBy",
       "createdAt",
+      "firstentry"
     ];
     const isDeleted = 0;
     const createdBy = tokenData.id;
@@ -81,6 +87,7 @@ const transactionCreate = async (req, res) => {
       `'${isDeleted}'`,
       `'${createdBy}'`,
       `'${createdAt}'`,
+      `${firstentry}`
     ];
 
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
@@ -218,9 +225,17 @@ const transactionUpdate = async (req, res) => {
     }
 
     if (date !== transaction[0].date) {
+      // const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+      //   tokenData.id
+      // } WHERE id = ${transactionId}`;
+      // const [deletetransaction] = await db.promise().query(deleteQuery);
+
+      // bankCarryForword(transaction[0].date, transactionId, "delete");
+
       const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
         tokenData.id
       } WHERE id = ${transactionId}`;
+
       const [deletetransaction] = await db.promise().query(deleteQuery);
 
       bankCarryForword(transaction[0].date, transactionId, "delete");
@@ -237,7 +252,21 @@ const transactionUpdate = async (req, res) => {
 
       const [transactionInsert] = await db.promise().query(query);
 
-      bankCarryForword(date, transactionInsert.insertId);
+      if (date > transaction[0].date) {
+        const sql_credit = `select sum(credit) as credit,sum(debit) as debit from ${transactionTabel} where month(date)=month('${date}') and year(date) = year('${date}') and bank = ${bank}`;
+        const [sum_credit] = await db.promise().query(sql_credit);
+
+        bankCarryForword(
+          date,
+          transactionInsert.insertId,
+          "",
+          sum_credit[0].credit,
+          sum_credit[0].debit,
+          "expense"
+        );
+      } else {
+        bankCarryForword(date, transactionInsert.insertId);
+      }
     }
 
     if (transaction[0].paymentStatus == "Paid") {

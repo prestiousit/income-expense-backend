@@ -7,16 +7,17 @@ async function bankCarryForword(
   transcationId,
   type,
   updateCredit,
-  updateDebit
+  updateDebit,
+  t
 ) {
   let month = moment(date || moment().toISOString()).month() + 1;
   let year = moment(date || moment().toISOString()).year();
 
-  const transactionSelectQuery = `select bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
-  let [transactionData] = await db.promise().query(transactionSelectQuery);
-
   const curretMonth = `select * from bank_carry_forward where month=${month} AND year=${year}`;
   const [curretMonthData] = await db.promise().query(curretMonth);
+
+  const transactionSelectQuery = `select bank,credit,debit from ${transactionTabel} where id = ${transcationId}`;
+  let [transactionData] = await db.promise().query(transactionSelectQuery);
 
   let queryMonth = month;
   let queryYear = year;
@@ -75,7 +76,12 @@ async function bankCarryForword(
         let data = [...lastMonthData[0].data];
 
         data = data.map((el) => {
-          let obj = { bank: 1, debit: 0, total: el.total, credit: el.total };
+          let obj = {
+            bank: el.bank,
+            debit: 0,
+            total: el.total,
+            credit: el.total,
+          };
           return obj;
         });
         const Insert = {
@@ -93,6 +99,13 @@ async function bankCarryForword(
     }
   } else {
     const selectBank = curretMonthData[0].data.find((el) => el.bank === bank);
+    let lastBank;
+
+    if(t == 'expense'){
+      lastBank = lastMonthData.length != 0 ? lastMonthData[0].data.find((el) => el.bank === bank) : [];
+      console.log("\n\nlastMonthData[0].data",lastMonthData[0],lastMonthData[0]?.data);
+    }
+
     let newData;
     if (selectBank) {
       const selectDataIndex = curretMonthData[0].data.indexOf(selectBank);
@@ -111,11 +124,23 @@ async function bankCarryForword(
         debit = updateDebit;
       }
 
+      if (t == "expense") {
+        if( updateCredit != 0){
+          selectBank.credit = +lastBank.total;
+          credit = +updateCredit;
+          debit = +debit;
+        }
+        else{
+          selectBank.credit = lastBank.length !=0 ? +lastBank.total : selectBank.credit;
+        }
+      }
+
       const Insert = {
         bank: +bank,
         credit: +selectBank.credit + +credit,
         debit: +selectBank.debit + +debit,
-        total: +selectBank.total + (+credit - +debit),
+        total: ((+selectBank.credit + +credit) - (+selectBank.debit + +debit)),
+        // total : +credit
       };
 
       data.push(Insert);
@@ -176,7 +201,6 @@ async function monthFrowerd(date, credit, debit, bankId) {
 
     let newData = [];
 
-
     if (findBank) {
       let selectDataIndex = data.indexOf(findBank);
       data.splice(selectDataIndex, 1);
@@ -187,8 +211,7 @@ async function monthFrowerd(date, credit, debit, bankId) {
         total: +findBank.total + (+credit - +debit),
       };
 
-      newData.push(...data,Insert);
-
+      newData.push(...data, Insert);
     } else {
       const Insert = {
         bank: +bankId,
@@ -196,9 +219,8 @@ async function monthFrowerd(date, credit, debit, bankId) {
         debit: +debit,
         total: +credit - +debit,
       };
-      
 
-      newData.push(...data,Insert);
+      newData.push(...data, Insert);
     }
 
     let newDataStringify = JSON.stringify(newData);
