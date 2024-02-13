@@ -9,6 +9,6 @@ router.post('/create',transactionCreate)
 router.post('/get',transactionGet)
 router.patch('/update',transactionUpdate)
 router.delete('/delete/:id',transactionDelete)
-router.get('/shouldDelete/:id',transactionShouldDelete)
+router.post('/shouldDelete/:id',transactionShouldDelete)
 
 module.exports = router;

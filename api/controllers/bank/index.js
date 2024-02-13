@@ -50,13 +50,13 @@ const bankCreate = async (req, res) => {
     req.body.createdBy = "1";
     req.body.createdAt = moment().toISOString();
 
-    const keys = Object.keys(req.body)
-      .map((key) => `${key}`)
-      .join(", ");
+    // const keys = Object.keys(req.body)
+    //   .map((key) => `${key}`)
+    //   .join(", ");
 
-    const keyvalues = Object.keys(req.body)
-      .map((key) => `'${req.body[key]}'`)
-      .join(", ");
+    // const keyvalues = Object.keys(req.body)
+    //   .map((key) => `'${req.body[key]}'`)
+    //   .join(", ");
 
     const sql = `INSERT INTO ${bankTabel}
       (user, bankname, banknickname, accountno, ifsc_code, mobileNo,bankLabel, bankbranch, amount, description, color, status, isDeleted, createdBy, createdAt)
@@ -126,7 +126,7 @@ const bankGet = async (req, res) => {
     const carryForwordData = await carryForwordGet(month, year);
 
     const sql = `
-    SELECT  b.id, b.bankName, b.bankNickName, b.amount, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color
+    SELECT  b.id, b.bankName, b.bankNickName, b.user AS userid,  b.bankLabel AS labelid, b.bankBranch, b.accountNo, b.IFSC_code, b.mobileNo, u.name AS username,b.description, l.name AS bankLabel, b.status, b.color
     FROM bank b
     LEFT JOIN transaction t ON t.bank = b.id 
     LEFT JOIN user u ON b.user = u.id
@@ -151,9 +151,9 @@ const bankGet = async (req, res) => {
         dataObject.debit = debit;
         dataObject.total = total;
       } else {
-        dataObject.credit = +dataObject.amount;
+        dataObject.credit = +dataObject.total;
         dataObject.debit = 0;
-        dataObject.total = +dataObject.amount;
+        dataObject.total = +dataObject.total;
       }
     });
 
@@ -188,14 +188,11 @@ const bankDelete = async (req, res) => {
     if (!bank || bank.length === 0) {
       throw new Error("bank not found");
     }
-
-    // const count_trans = `select count(*) from ${transactionTabel} where bank = ${bankId};`;
-    // const [transactionData] = await db.promise().query(count_trans);
     
     const checkTranscationQuery = `select * from ${transactionTabel} where bank = ${bankId} AND isDeleted = 0`
     const [checkTransaction] = await db.promise().query(checkTranscationQuery);
 
-    if (checkTransaction.length === 1) {
+    if (checkTransaction.length === 0) {
       const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt = '${moment()}', deletedBy = ${
         tokenData.id
       } WHERE id = ${bankId}`;
@@ -226,6 +223,7 @@ const bankDelete = async (req, res) => {
     res.status(200).json({
       status: "success",
       message: "bank Deleted successfully",
+      checkTransaction:checkTransaction.length
     });
   } catch (error) {
     res.status(404).json({

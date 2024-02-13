@@ -56,7 +56,7 @@ async function bankCarryForword(
         let selectDataRemove = lastMonthData[0].data;
 
         selectDataRemove = selectDataRemove.map((el) => {
-          let obj = { bank: 1, debit: 0, total: el.total, credit: el.total };
+          let obj = { bank: el.bank, debit: 0, total: el.total, credit: el.total };
           return obj;
         });
         const Insert = {
@@ -98,6 +98,9 @@ async function bankCarryForword(
       }
     }
   } else {
+    const curretMonth = `select * from bank_carry_forward where month=${month} AND year=${year}`;
+    const [curretMonthData] = await db.promise().query(curretMonth);
+
     const selectBank = curretMonthData[0].data.find((el) => el.bank === bank);
     let lastBank;
 
@@ -126,12 +129,12 @@ async function bankCarryForword(
 
       if (t == "expense") {
         if( updateCredit != 0){
-          selectBank.credit = +lastBank.total;
+          // selectBank.credit = +lastBank.total;
           credit = +updateCredit;
           debit = +debit;
         }
         else{
-          selectBank.credit = lastBank.length !=0 ? +lastBank.total : selectBank.credit;
+          // selectBank.credit = lastBank.length !=0 ? +lastBank.total : selectBank.credit;
         }
       }
 

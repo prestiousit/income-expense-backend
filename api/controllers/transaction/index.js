@@ -35,15 +35,14 @@ const transactionCreate = async (req, res) => {
       const [findNickNameData] = await db.promise().query(findNickName);
 
       if (!findNickNameData[0]) {
-        const sql = `INSERT INTO ${bankTabel} (banknickname,amount,user,isDeleted,status,createdAt,createdBy )
-        VALUES ('${bank}' , 0 ,${paidBy},0,'active','${moment().toISOString()}',${
+        const sql = `INSERT INTO ${bankTabel} (banknickname,user,isDeleted,status,createdAt,createdBy )
+        VALUES ('${bank}' ,${paidBy},0,'active','${moment().toISOString()}',${
           tokenData.id
         })`;
         const [data] = await db.promise().query(sql);
         bank = data.insertId;
 
         firstentry = 1;
-
       } else {
         bank = findNickNameData[0].id;
       }
@@ -68,7 +67,7 @@ const transactionCreate = async (req, res) => {
       "isDeleted",
       "createdBy",
       "createdAt",
-      "firstentry"
+      "firstentry",
     ];
     const isDeleted = 0;
     const createdBy = tokenData.id;
@@ -87,27 +86,27 @@ const transactionCreate = async (req, res) => {
       `'${isDeleted}'`,
       `'${createdBy}'`,
       `'${createdAt}'`,
-      `${firstentry}`
+      `${firstentry}`,
     ];
 
     const query = `INSERT INTO ${transactionTabel} (${field}) VALUES (${value})`;
     const [transaction] = await db.promise().query(query);
 
     if (paymentStatus == "Paid") {
-      const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bank}`;
-      const [data] = await db.promise().query(selectQuery);
+      // const selectQuery = `SELECT * FROM ${bankTabel} WHERE id  = ${bank}`;
+      // const [data] = await db.promise().query(selectQuery);
 
-      let currentAmount = +data[0].amount;
-      if (type === "Income") {
-        currentAmount += amount;
-      } else if (type === "Expense") {
-        currentAmount -= amount;
-      }
+      // let currentAmount = +data[0].amount;
+      // if (type === "Income") {
+      //   currentAmount += amount;
+      // } else if (type === "Expense") {
+      //   currentAmount -= amount;
+      // }
 
-      const updateBankQuery = `UPDATE ${bankTabel} SET amount = ${currentAmount} WHERE id = ${bank}`;
-      await db.promise().query(updateBankQuery);
+      // const updateBankQuery = `UPDATE ${bankTabel} SET amount = ${currentAmount} WHERE id = ${bank}`;
+      // await db.promise().query(updateBankQuery);
 
-      // bankCarryForword(req.body.date);
+      // // bankCarryForword(req.body.date);
       bankCarryForword(req.body.date, transaction.insertId);
     }
 
@@ -195,28 +194,28 @@ const transactionUpdate = async (req, res) => {
       })
       .join(", ");
 
-    let currentAmount;
+    // let currentAmount;
 
-    if (transaction[0].type === "Income") {
-      currentAmount = transaction[0].credit;
-    } else if (transaction[0].type === "Expense") {
-      currentAmount = transaction[0].debit;
-    }
+    // if (transaction[0].type === "Income") {
+    //   currentAmount = transaction[0].credit;
+    // } else if (transaction[0].type === "Expense") {
+    //   currentAmount = transaction[0].debit;
+    // }
 
-    const bankSelctQuery = `SELECT amount,id FROM ${bankTabel} WHERE id = ${transaction[0].bank}`;
-    const [bankAmount] = await db.promise().query(bankSelctQuery);
+    // const bankSelctQuery = `SELECT amount,id FROM ${bankTabel} WHERE id = ${transaction[0].bank}`;
+    // const [bankAmount] = await db.promise().query(bankSelctQuery);
 
-    let bankAmountUpdate = +bankAmount[0].amount;
+    // let bankAmountUpdate = +bankAmount[0].amount;
 
-    if (type === "Income") {
-      bankAmountUpdate += currentAmount;
-      bankAmountUpdate += amount;
-      updateFields += `,credit = '${amount}',debit = 0`;
-    } else if (type === "Expense") {
-      bankAmountUpdate -= currentAmount;
-      bankAmountUpdate -= amount;
-      updateFields += `,credit = 0,debit = '${amount}'`;
-    }
+    // if (type === "Income") {
+    //   bankAmountUpdate += currentAmount;
+    //   bankAmountUpdate += amount;
+    //   updateFields += `,credit = '${amount}',debit = 0`;
+    // } else if (type === "Expense") {
+    //   bankAmountUpdate -= currentAmount;
+    //   bankAmountUpdate -= amount;
+    //   updateFields += `,credit = 0,debit = '${amount}'`;
+    // }
 
     if (date === transaction[0].date) {
       let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
@@ -237,6 +236,21 @@ const transactionUpdate = async (req, res) => {
       } WHERE id = ${transactionId}`;
 
       const [deletetransaction] = await db.promise().query(deleteQuery);
+
+      // if (transaction[0].firstentry == 1) {
+      //   const carryForwordQuery = `SELECT * FROM bank_carry_forward WHERE JSON_CONTAINS(data, '{"bank": ${bank}}', '$') order by month`;
+      //   const [carryData] = await db.promise().query(carryForwordQuery);
+
+      //   await Promise.all(
+      //     carryData.map(async(el)=>{
+      //       console.log("\n\nbank",bank,el.data);
+      //       const newData = el.data.filter(((el)=>el.bank !=  bank));
+      //       const stringify = JSON.stringify(newData);
+      //       const updateQuery = `update bank_carry_forward set data = '${stringify}' where id = ${el.id}`;
+      //       await db.promise().query(updateQuery);
+      //     })
+      //   );
+      // }
 
       bankCarryForword(transaction[0].date, transactionId, "delete");
 
@@ -269,10 +283,10 @@ const transactionUpdate = async (req, res) => {
       }
     }
 
-    if (transaction[0].paymentStatus == "Paid") {
-      const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
-      await db.promise().query(bankUpdateAmountQuery);
-    }
+    // if (transaction[0].paymentStatus == "Paid") {
+    //   const bankUpdateAmountQuery = `UPDATE ${bankTabel} SET amount = ${bankAmountUpdate} where id = ${transaction[0].bank}`;
+    //   await db.promise().query(bankUpdateAmountQuery);
+    // }
 
     res.status(200).json({
       status: "success",
@@ -363,16 +377,12 @@ const transactionDelete = async (req, res) => {
     const count_trans = `select count(*) as count from ${transactionTabel} where bank = ${bankdata[0].bank} and isDeleted = 0;`;
     const [transactionData] = await db.promise().query(count_trans);
 
-    console.log("\nout=======\n",transactionData[0].count === 0);
-    if(transactionData[0].count === 0){
-      console.log("\n=======\n");
+    if (transactionData[0].count === 0) {
       const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
         tokenData.id
       } WHERE id = ${bankdata[0].bank}`;
-  
-      const [deletetransaction] = await db.promise().query(deleteQuery);
 
-      console.log("\n=======\n",deletetransaction);
+      const [deletetransaction] = await db.promise().query(deleteQuery);
     }
 
     // const query_bank_amount = `UPDATE ${bankTabel} SET amount = amount - ${Math.abs(
@@ -387,7 +397,6 @@ const transactionDelete = async (req, res) => {
       status: "success",
       message: "transaction Deleted successfully",
       transaction: deletetransaction,
-      transaction1:transactionData[0].count
     });
   } catch (error) {
     res.status(404).json({
@@ -400,15 +409,27 @@ const transactionDelete = async (req, res) => {
 const transactionShouldDelete = async (req, res) => {
   try {
     const transactionId = req.params.id;
+    const bankNickName = req.body.bankNickName;
     const query = `select bankNickName from ${transactionTabel} t left join ${bankTabel} b on b.id = t.bank where firstentry = 1 and t.id = ${transactionId}`;
     const [Data] = await db.promise().query(query);
 
-    data = Data.length == 0 ? "Are you sure you want to Delete" : `This is last record of bank ''${Data[0].bankNickName}'' if you delete it bank will also get Deleted`;
+    let another = [];
+    if (Data.length !== 0) {
+      const anotherTransaction = `select * from ${transactionTabel} t left join ${bankTabel} b on b.id = t.bank where firstentry = 0 and t.isDeleted = 0 and bankNickName = '${bankNickName}'`;
+      [another] = await db.promise().query(anotherTransaction);
+    }
 
+    let data =
+      Data.length == 0
+        ? "Are you sure you want to Delete"
+        : `This is the First record of bank ''${Data[0].bankNickName}'' if you delete it bank will also get Deleted`;
+    let anotherData = another.length === 0 ? false : true;
     res.status(200).json({
       status: "success",
       // message: "transaction Deleted successfully",
-      data
+      data,
+      anotherData,
+      bankNickName: bankNickName,
     });
   } catch (error) {
     res.status(404).json({
@@ -416,12 +437,12 @@ const transactionShouldDelete = async (req, res) => {
       message: error.message,
     });
   }
-}
+};
 
 module.exports = {
   transactionCreate,
   transactionUpdate,
   transactionGet,
   transactionDelete,
-  transactionShouldDelete
+  transactionShouldDelete,
 };
