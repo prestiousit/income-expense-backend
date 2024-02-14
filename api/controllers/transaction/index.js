@@ -26,6 +26,13 @@ const transactionCreate = async (req, res) => {
 
     let firstentry = 0;
 
+  const getBankDatewiseSql = `select * from transaction where bank = 2 and date <= '${date}';`;
+  const [getBankDatewise] = await db.promise().query(getBankDatewiseSql);
+
+  // if(getBankDatewise.length === 0){
+  //   throw new Error("Bank is ")
+  // }
+
     if (typeof bank === "string") {
       if (!amount || !paidBy) {
         throw new Error("Amount or Paid Persone Required..!");
@@ -138,7 +145,7 @@ const transactionUpdate = async (req, res) => {
       color,
     } = req.body;
 
-    req.body.updatedAt = new Date();
+    req.body.updatedAt = moment().toISOString();
     req.body.updatedBy = tokenData.id;
     const selectQuery = `SELECT * FROM ${transactionTabel} WHERE id = ${transactionId}`;
     const [transaction] = await db.promise().query(selectQuery);
@@ -196,26 +203,26 @@ const transactionUpdate = async (req, res) => {
 
     // let currentAmount;
 
-    // if (transaction[0].type === "Income") {
-    //   currentAmount = transaction[0].credit;
-    // } else if (transaction[0].type === "Expense") {
-    //   currentAmount = transaction[0].debit;
-    // }
+    if (transaction[0].type === "Income") {
+      currentAmount = transaction[0].credit;
+    } else if (transaction[0].type === "Expense") {
+      currentAmount = transaction[0].debit;
+    }
 
     // const bankSelctQuery = `SELECT amount,id FROM ${bankTabel} WHERE id = ${transaction[0].bank}`;
     // const [bankAmount] = await db.promise().query(bankSelctQuery);
 
     // let bankAmountUpdate = +bankAmount[0].amount;
 
-    // if (type === "Income") {
-    //   bankAmountUpdate += currentAmount;
-    //   bankAmountUpdate += amount;
-    //   updateFields += `,credit = '${amount}',debit = 0`;
-    // } else if (type === "Expense") {
-    //   bankAmountUpdate -= currentAmount;
-    //   bankAmountUpdate -= amount;
-    //   updateFields += `,credit = 0,debit = '${amount}'`;
-    // }
+    if (type === "Income") {
+      // bankAmountUpdate += currentAmount;
+      // bankAmountUpdate += amount;
+      updateFields += `,credit = '${amount}',debit = 0`;
+    } else if (type === "Expense") {
+      // bankAmountUpdate -= currentAmount;
+      // bankAmountUpdate -= amount;
+      updateFields += `,credit = 0,debit = '${amount}'`;
+    }
 
     if (date === transaction[0].date) {
       let query = `UPDATE ${transactionTabel} SET ${updateFields} WHERE id = ${transactionId}`;
@@ -231,7 +238,7 @@ const transactionUpdate = async (req, res) => {
 
       // bankCarryForword(transaction[0].date, transactionId, "delete");
 
-      const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+      const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${moment().toISOString()}',deletedBy = ${
         tokenData.id
       } WHERE id = ${transactionId}`;
 
@@ -266,7 +273,7 @@ const transactionUpdate = async (req, res) => {
 
       const [transactionInsert] = await db.promise().query(query);
 
-      if (date > transaction[0].date) {
+      if (date > transaction[0].date && type == 'Expense') {
         const sql_credit = `select sum(credit) as credit,sum(debit) as debit from ${transactionTabel} where month(date)=month('${date}') and year(date) = year('${date}') and bank = ${bank}`;
         const [sum_credit] = await db.promise().query(sql_credit);
 
@@ -368,7 +375,7 @@ const transactionDelete = async (req, res) => {
     LEFT OUTER JOIN (SELECT id,debit as debit FROM transaction WHERE type='Expense') debit ON t.id = debit.id WHERE t.id=${transactionId} AND paymentStatus = 'Paid'`;
     const [bankdata] = await db.promise().query(query_bank);
 
-    const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+    const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${moment().toISOString()}',deletedBy = ${
       tokenData.id
     } WHERE id = ${transactionId}`;
 
@@ -378,7 +385,7 @@ const transactionDelete = async (req, res) => {
     const [transactionData] = await db.promise().query(count_trans);
 
     if (transactionData[0].count === 0) {
-      const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt='${new Date()}',deletedBy = ${
+      const deleteQuery = `UPDATE ${bankTabel} SET isDeleted = 1, deletedAt='${moment().toISOString()}',deletedBy = ${
         tokenData.id
       } WHERE id = ${bankdata[0].bank}`;
 
