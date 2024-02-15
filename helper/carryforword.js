@@ -56,7 +56,12 @@ async function bankCarryForword(
         let selectDataRemove = lastMonthData[0].data;
 
         selectDataRemove = selectDataRemove.map((el) => {
-          let obj = { bank: el.bank, debit: 0, total: el.total, credit: el.total };
+          let obj = {
+            bank: el.bank,
+            debit: 0,
+            total: el.total,
+            credit: el.total,
+          };
           return obj;
         });
         const Insert = {
@@ -104,9 +109,16 @@ async function bankCarryForword(
     const selectBank = curretMonthData[0].data.find((el) => el.bank === bank);
     let lastBank;
 
-    if(t == 'expense'){
-      lastBank = lastMonthData.length != 0 ? lastMonthData[0].data.find((el) => el.bank === bank) : [];
-      console.log("\n\nlastMonthData[0].data",lastMonthData[0],lastMonthData[0]?.data);
+    if (t == "expense") {
+      lastBank =
+        lastMonthData.length != 0
+          ? lastMonthData[0].data.find((el) => el.bank === bank)
+          : [];
+      console.log(
+        "\n\nlastMonthData[0].data",
+        lastMonthData[0],
+        lastMonthData[0]?.data
+      );
     }
 
     let newData;
@@ -128,12 +140,11 @@ async function bankCarryForword(
       }
 
       if (t == "expense") {
-        if( updateCredit != 0){
+        if (updateCredit != 0) {
           // selectBank.credit = +lastBank.total;
           credit = +updateCredit;
           debit = +debit;
-        }
-        else{
+        } else {
           // selectBank.credit = lastBank.length !=0 ? +lastBank.total : selectBank.credit;
         }
       }
@@ -142,7 +153,7 @@ async function bankCarryForword(
         bank: +bank,
         credit: +selectBank.credit + +credit,
         debit: +selectBank.debit + +debit,
-        total: ((+selectBank.credit + +credit) - (+selectBank.debit + +debit)),
+        total: +selectBank.credit + +credit - (+selectBank.debit + +debit),
         // total : +credit
       };
 
@@ -181,7 +192,22 @@ async function carryForwordGet(month, year) {
 
   try {
     const [findCarryData] = await db.promise().query(findCarryQuery);
-    const bankData = findCarryData ? findCarryData : [];
+
+    let data,bankData;
+    if (findCarryData.length == 0) {
+      const findCarryQuery = `
+        SELECT * 
+        FROM bank_carry_forward 
+        ORDER BY year DESC, month DESC 
+        LIMIT 1;
+      `;
+
+      [data] = await db.promise().query(findCarryQuery);
+      
+      bankData = data;
+    }else{
+      bankData = findCarryData ;
+    }
     return bankData;
   } catch (error) {
     console.error("Error in carryForwordGet:", error);

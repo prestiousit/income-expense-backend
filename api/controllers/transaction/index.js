@@ -26,34 +26,46 @@ const transactionCreate = async (req, res) => {
 
     let firstentry = 0;
 
-  const getBankDatewiseSql = `select * from transaction where bank = 2 and date <= '${date}';`;
-  const [getBankDatewise] = await db.promise().query(getBankDatewiseSql);
+    const bankType = typeof bank === "string" ? `bankNickName` : `b.id`;
+    // if (typeof bank != "string") {
+    if (!amount || !paidBy) {
+      throw new Error("Amount or Paid Persone Required..!");
+    }
 
-  // if(getBankDatewise.length === 0){
-  //   throw new Error("Bank is ")
-  // }
+    const findNickName = `select * from bank b where ${bankType} = '${bank}' and isDeleted = 0`;
+    const [findNickNameData] = await db.promise().query(findNickName);
 
-    if (typeof bank === "string") {
-      if (!amount || !paidBy) {
-        throw new Error("Amount or Paid Persone Required..!");
+    if (findNickNameData.length !== 0) {
+      const getBankDatewiseSql = `select t.id from transaction t left join bank b on t.id = b.id where ${bankType} = ${bank}' and date <= '${date}' limit 1 ;`;
+      const [getBankDatewise] = await db.promise().query(getBankDatewiseSql);
+
+      if (getBankDatewise.length === 0) {
+        throw new Error("Don't Create transaction before bank is created");
       }
 
-      const findNickName = `select * from bank where bankNickName = '${bank}'`;
-      const [findNickNameData] = await db.promise().query(findNickName);
+      if (type === "Expense") {
+        const checkAmountSql = `select sum(credit-debit) as amt from ${transactionTabel} where bank = ${findNickNameData[0].id} and isDeleted = 0;`;
+        const [checkAmount] = await db.promise().query(checkAmountSql);
 
-      if (!findNickNameData[0]) {
-        const sql = `INSERT INTO ${bankTabel} (banknickname,user,isDeleted,status,createdAt,createdBy )
-        VALUES ('${bank}' ,${paidBy},0,'active','${moment().toISOString()}',${
-          tokenData.id
-        })`;
-        const [data] = await db.promise().query(sql);
-        bank = data.insertId;
-
-        firstentry = 1;
-      } else {
-        bank = findNickNameData[0].id;
+        if (checkAmount[0].amt < amount) {
+          throw new Error("Don't Add Expense Amount More than Bank Balance");
+        }
       }
     }
+
+    if (!findNickNameData[0]) {
+      const sql = `INSERT INTO ${bankTabel} (banknickname,user,isDeleted,status,createdAt,createdBy )
+        VALUES ('${bank}' ,${paidBy},0,'active','${moment().toISOString()}',${
+        tokenData.id
+      })`;
+      const [data] = await db.promise().query(sql);
+      bank = data.insertId;
+      type = "Income";
+      firstentry = 1;
+    } else {
+      bank = findNickNameData[0].id;
+    }
+    // }
     if (!transactionLabel) {
       transactionLabel = null;
     }
@@ -133,7 +145,7 @@ const transactionUpdate = async (req, res) => {
   try {
     const transactionId = req.query.id;
     const tokenData = await jwtTokenVerify(req.headers.token);
-    const {
+    let {
       type,
       amount,
       date,
@@ -143,6 +155,7 @@ const transactionUpdate = async (req, res) => {
       paymentStatus,
       transactionLabel,
       color,
+      firstentry,
     } = req.body;
 
     req.body.updatedAt = moment().toISOString();
@@ -152,6 +165,19 @@ const transactionUpdate = async (req, res) => {
 
     if (!transaction || transaction.length === 0) {
       throw new Error("transaction not found");
+    }
+
+    const bankType = typeof bank === "string" ? `bankNickName` : `b.id`;
+    const findNickName = `select * from bank b where ${bankType} = '${bank}' and isDeleted = 0`;
+    const [findNickNameData] = await db.promise().query(findNickName);
+
+    if (!findNickNameData[0]) {
+      const sql = `INSERT INTO ${bankTabel} (banknickname,user,isDeleted,status,createdAt,createdBy )
+      VALUES ('${bank}' ,${paidBy},0,'active','${moment().toISOString()}',${
+        tokenData.id
+      })`;
+      const [data] = await db.promise().query(sql);
+      bank = data.insertId;
     }
 
     let iamount = amount;
@@ -190,6 +216,9 @@ const transactionUpdate = async (req, res) => {
           updateDebit
         );
       }
+      // else if(bank !== transaction[0].bank){
+
+      // }
     }
 
     let updateFields = Object.keys(req.body)
@@ -238,6 +267,27 @@ const transactionUpdate = async (req, res) => {
 
       // bankCarryForword(transaction[0].date, transactionId, "delete");
 
+      const checkFirstEntrySql = `select id from transaction where firstentry =1 and id = ${transactionId}`;
+      const [checkFirstEntry] = await db.promise().query(checkFirstEntrySql);
+
+      if (checkFirstEntry.length === 0) {
+        const getBankDatewiseSql = `select id from transaction where bank = '${bank}' and date <= '${date}' limit 1;`;
+        const [getBankDatewise] = await db.promise().query(getBankDatewiseSql);
+
+        if (getBankDatewise.length === 0) {
+          throw new Error("Don't Update transaction before bank is created");
+        }
+      }
+
+      if (type === "Expense") {
+        const checkAmountSql = `select sum(credit-debit) as amt from ${transactionTabel} where bank = ${bank} and isDeleted = 0;`;
+        const [checkAmount] = await db.promise().query(checkAmountSql);
+
+        if (checkAmount[0].amt < amount) {
+          throw new Error("Don't Add Expense Amount More than Bank Balance");
+        }
+      }
+
       const deleteQuery = `UPDATE ${transactionTabel} SET isDeleted = 1, deletedAt='${moment().toISOString()}',deletedBy = ${
         tokenData.id
       } WHERE id = ${transactionId}`;
@@ -273,7 +323,7 @@ const transactionUpdate = async (req, res) => {
 
       const [transactionInsert] = await db.promise().query(query);
 
-      if (date > transaction[0].date && type == 'Expense') {
+      if (date > transaction[0].date) {
         const sql_credit = `select sum(credit) as credit,sum(debit) as debit from ${transactionTabel} where month(date)=month('${date}') and year(date) = year('${date}') and bank = ${bank}`;
         const [sum_credit] = await db.promise().query(sql_credit);
 

@@ -137,11 +137,12 @@ const bankGet = async (req, res) => {
 
     const [Data] = await db.promise().query(sql);
 
-    let bankCarryData =
-      carryForwordData && carryForwordData[0] ? [carryForwordData[0].data] : [];
+    let bankCarryData =carryForwordData && carryForwordData[0] ? [carryForwordData[0].data] : [];
 
     Data.forEach((dataObject) => {
       const bankId = dataObject.id.toString();
+
+      console.log("\n\nbbb==",bankCarryData[0],bankCarryData);
       const correspondingBankCarryData = bankCarryData[0].find(
         (el) => el.bank === +bankId
       );
@@ -162,6 +163,8 @@ const bankGet = async (req, res) => {
 
     const yearSql = `select distinct year as value , year AS label from bank_carry_forward`;
     const [yearData] = await db.promise().query(yearSql);
+
+    console.log("\n\nmonth===",monthData,yearData);
     res.status(200).json({
       status: "success",
       message: "get adata of bank",
