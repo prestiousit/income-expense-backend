@@ -36,7 +36,7 @@ const transactionCreate = async (req, res) => {
     const [findNickNameData] = await db.promise().query(findNickName);
 
     if (findNickNameData.length !== 0) {
-      const getBankDatewiseSql = `select t.id from transaction t left join bank b on t.id = b.id where ${bankType} = ${bank}' and date <= '${date}' limit 1 ;`;
+      const getBankDatewiseSql = `select t.id from transaction t left join bank b on t.id = b.id where ${bankType} = '${bank}' and date <= '${date}' limit 1 ;`;
       const [getBankDatewise] = await db.promise().query(getBankDatewiseSql);
 
       if (getBankDatewise.length === 0) {
@@ -293,23 +293,26 @@ const transactionUpdate = async (req, res) => {
       } WHERE id = ${transactionId}`;
 
       const [deletetransaction] = await db.promise().query(deleteQuery);
-
-      // if (transaction[0].firstentry == 1) {
-      //   const carryForwordQuery = `SELECT * FROM bank_carry_forward WHERE JSON_CONTAINS(data, '{"bank": ${bank}}', '$') order by month`;
-      //   const [carryData] = await db.promise().query(carryForwordQuery);
-
-      //   await Promise.all(
-      //     carryData.map(async(el)=>{
-      //       console.log("\n\nbank",bank,el.data);
-      //       const newData = el.data.filter(((el)=>el.bank !=  bank));
-      //       const stringify = JSON.stringify(newData);
-      //       const updateQuery = `update bank_carry_forward set data = '${stringify}' where id = ${el.id}`;
-      //       await db.promise().query(updateQuery);
-      //     })
-      //   );
-      // }
-
       bankCarryForword(transaction[0].date, transactionId, "delete");
+      if (checkFirstEntry.length !== 0) {
+        const carryForwordQuery = `SELECT * FROM bank_carry_forward WHERE JSON_CONTAINS(data, '{"bank": ${bank}}', '$') order by month`;
+        const [carryData] = await db.promise().query(carryForwordQuery);
+
+          await Promise.all(
+          carryData.map(async (el) => {
+            console.log("\n\nbank", bank, el.data);
+            const newData = el.data.filter((el) => {
+              console.log(el.bank != bank, el.bank, bank);
+              return el.bank != bank;
+            });
+            const stringify = JSON.stringify(newData);
+            console.log(stringify);
+            const updateQuery = `update bank_carry_forward set data = '${stringify}' where id = ${el.id}`;
+            await db.promise().query(updateQuery);
+          })
+        );
+      }
+
 
       const in_credit = type === "Income" ? iamount : 0;
       const in_debit = type === "Expense" ? iamount : 0;
@@ -318,8 +321,8 @@ const transactionUpdate = async (req, res) => {
       const updatedAt = moment().toISOString();
 
       const query = `INSERT INTO ${transactionTabel} (date,credit,debit,type,description,paidby,bank,
-      paymentStatus,transactionLabel,color,isDeleted,createdBy,createdAt,updatedBy,updatedAt) VALUES 
-      ('${date}',${in_credit},${in_debit},'${type}','${description}','${paidBy}','${bank}','${paymentStatus}','${transactionLabel}','${color}',${isDeleted},${transaction[0].createdBy},'${transaction[0].createdAt}',${updatedBy},'${updatedAt}')`;
+      paymentStatus,transactionLabel,color,isDeleted,createdBy,createdAt,updatedBy,updatedAt,firstentry) VALUES 
+      ('${date}',${in_credit},${in_debit},'${type}','${description}','${paidBy}','${bank}','${paymentStatus}','${transactionLabel}','${color}',${isDeleted},${transaction[0].createdBy},'${transaction[0].createdAt}',${updatedBy},'${updatedAt}',${transaction[0].firstentry})`;
 
       const [transactionInsert] = await db.promise().query(query);
 
@@ -327,6 +330,7 @@ const transactionUpdate = async (req, res) => {
         const sql_credit = `select sum(credit) as credit,sum(debit) as debit from ${transactionTabel} where month(date)=month('${date}') and year(date) = year('${date}') and bank = ${bank}`;
         const [sum_credit] = await db.promise().query(sql_credit);
 
+        console.log("\n\n", sum_credit[0].credit, sum_credit[0].debit);
         bankCarryForword(
           date,
           transactionInsert.insertId,

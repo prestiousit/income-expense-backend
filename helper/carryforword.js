@@ -114,11 +114,6 @@ async function bankCarryForword(
         lastMonthData.length != 0
           ? lastMonthData[0].data.find((el) => el.bank === bank)
           : [];
-      console.log(
-        "\n\nlastMonthData[0].data",
-        lastMonthData[0],
-        lastMonthData[0]?.data
-      );
     }
 
     let newData;
@@ -141,11 +136,12 @@ async function bankCarryForword(
 
       if (t == "expense") {
         if (updateCredit != 0) {
-          // selectBank.credit = +lastBank.total;
+          selectBank.credit = +lastBank.total;
           credit = +updateCredit;
           debit = +debit;
         } else {
-          // selectBank.credit = lastBank.length !=0 ? +lastBank.total : selectBank.credit;
+          selectBank.credit =
+            lastBank.length != 0 ? +lastBank.total : selectBank.credit;
         }
       }
 
@@ -154,7 +150,6 @@ async function bankCarryForword(
         credit: +selectBank.credit + +credit,
         debit: +selectBank.debit + +debit,
         total: +selectBank.credit + +credit - (+selectBank.debit + +debit),
-        // total : +credit
       };
 
       data.push(Insert);
@@ -193,7 +188,7 @@ async function carryForwordGet(month, year) {
   try {
     const [findCarryData] = await db.promise().query(findCarryQuery);
 
-    let data,bankData;
+    let data, bankData;
     if (findCarryData.length == 0) {
       const findCarryQuery = `
         SELECT * 
@@ -203,10 +198,10 @@ async function carryForwordGet(month, year) {
       `;
 
       [data] = await db.promise().query(findCarryQuery);
-      
+
       bankData = data;
-    }else{
-      bankData = findCarryData ;
+    } else {
+      bankData = findCarryData;
     }
     return bankData;
   } catch (error) {
